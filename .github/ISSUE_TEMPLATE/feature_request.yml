@@ -1,0 +1,40 @@
+name: Feature Request
+description: Suggest a new feature
+labels: ["enhancement"]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Feature Area
+      options:
+        - Stamp management
+        - Warehouse / Picking
+        - Production line
+        - Wisedat integration
+        - XML / Fiscal export
+        - Reporting
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Feature Description
+    validations:
+      required: true
+  - type: textarea
+    id: use_case
+    attributes:
+      label: Business Use Case
+      placeholder: Why is this needed?
+    validations:
+      required: true
+  - type: dropdown
+    id: version
+    attributes:
+      label: Target Version
+      options:
+        - 17.0.1.1.0 (next release)
+        - 17.0.2.0.0 (XML fiscal)
+        - 17.0.3.0.0 (extended products)
+        - Future

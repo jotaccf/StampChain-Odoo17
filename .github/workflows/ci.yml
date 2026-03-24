@@ -1,0 +1,58 @@
+name: StampChain CI
+
+on:
+  push:
+    branches: [ main, dev ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: odoo
+          POSTGRES_PASSWORD: odoo
+          POSTGRES_DB: stampchain_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Odoo 17
+        run: docker pull odoo:17.0
+
+      - name: Install OCA dependencies
+        run: |
+          git clone https://github.com/OCA/stock-logistics-barcode.git \
+            -b 17.0 --depth 1 oca/barcodes
+          git clone https://github.com/OCA/manufacture.git \
+            -b 17.0 --depth 1 oca/manufacture
+
+      - name: Run StampChain tests
+        run: |
+          docker run --rm \
+            --network host \
+            -v $PWD/custom_addons:/mnt/extra-addons \
+            -v $PWD/oca/barcodes:/mnt/oca-barcodes \
+            -v $PWD/oca/manufacture:/mnt/oca-manufacture \
+            -e HOST=localhost \
+            -e USER=odoo \
+            -e PASSWORD=odoo \
+            odoo:17.0 odoo \
+            --addons-path=/mnt/extra-addons,/mnt/oca-barcodes,/mnt/oca-manufacture,/usr/lib/python3/dist-packages/odoo/addons \
+            -d stampchain_test \
+            -i stamp_chain \
+            --test-enable \
+            --test-tags /stamp_chain \
+            --stop-after-init \
+            --no-http
