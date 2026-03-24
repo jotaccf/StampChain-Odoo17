@@ -32,8 +32,8 @@ cd stampchain/
 # Iniciar ambiente
 docker compose up -d
 
-# Ver logs Odoo
-docker compose logs --tail=100 odoo
+# Ver logs Odoo (vão para ficheiro, não stdout)
+docker exec stampchain-odoo-1 bash -c "tail -100 /var/log/odoo/odoo.log"
 
 # Instalar módulo (primeira vez)
 docker compose exec odoo odoo -d stampchain_dev -i stamp_chain --stop-after-init --no-http
@@ -41,8 +41,8 @@ docker compose exec odoo odoo -d stampchain_dev -i stamp_chain --stop-after-init
 # Actualizar módulo (após alterações)
 docker compose exec odoo odoo -d stampchain_dev -u stamp_chain --stop-after-init --no-http
 
-# Correr testes
-docker compose exec odoo odoo -d stampchain_dev --test-enable --test-tags stamp_chain --stop-after-init --no-http
+# Correr testes (DENTRO do container — Git Bash Windows interpreta / como path)
+docker exec stampchain-odoo-1 bash -c "odoo -d stampchain_dev --test-enable --test-tags /stamp_chain --stop-after-init --no-http"
 
 # Acesso à BD
 docker compose exec db psql -U odoo -d stampchain_dev
@@ -71,18 +71,28 @@ docker compose exec db psql -U odoo -d stampchain_dev
 | delivery | Delivery | Expedição, trigger fiscal |
 | mail | Discuss | Alertas, notificações |
 
-### OCA (branch 17.0)
-| Módulo | Repositório | Função |
-|--------|-------------|--------|
-| barcodes_generator_location | OCA/stock-logistics-barcode | QR para prateleiras |
-| barcodes_generator_product | OCA/stock-logistics-barcode | QR para produtos |
-| product_multi_barcode | OCA/stock-logistics-barcode | Múltiplos barcodes |
-| stock_picking_product_barcode_report | OCA/stock-logistics-barcode | Relatório picking |
-| quality_control | OCA/quality | Controlo qualidade |
+### OCA Barcodes (branch 17.0, repo OCA/stock-logistics-barcode)
+| Módulo | Função |
+|--------|--------|
+| barcodes_generator_abstract | Base de geração de barcodes |
+| barcodes_generator_location | QR para prateleiras |
+| barcodes_generator_product | QR para produtos |
+| product_multi_barcode | Múltiplos barcodes |
+| stock_picking_product_barcode_report | Relatório picking |
+
+### OCA Quality (branch 17.0, repo OCA/manufacture)
+| Módulo | Função |
+|--------|--------|
+| quality_control_oca | Controlo qualidade base |
+| quality_control_stock_oca | Qualidade no stock |
+| quality_control_mrp_oca | Qualidade na produção |
+
+NOTA: Os modelos OCA de qualidade usam prefixo `qc.` (qc.inspection, qc.test, qc.trigger)
 
 ### NÃO DISPONÍVEIS (Enterprise only)
 - ❌ stock_barcode — usar browser Android nativo
-- ❌ quality_control base — usar OCA
+- ❌ stock_barcodes OCA — sem branch 17.0 (só 16.0, incompatível)
+- ❌ quality_control Enterprise — usar quality_control_oca de OCA/manufacture
 
 ---
 
@@ -271,25 +281,27 @@ PT_A-2026-INCM-REF-2024003-000001  (Açores)
 
 | Sequência | Prefixo | Exemplo |
 |-----------|---------|---------|
-| tobacco.stamp.lot | SC/LOT/%(year)s/ | SC/LOT/2026/0001 |
-| tobacco.stamp.breakdown | SC/BRK/%(year)s/ | SC/BRK/2026/0001 |
-| tobacco.stamp.recovery | SC/REC/%(year)s/ | SC/REC/2026/0001 |
-| tobacco.xml.export | SC/XML/%(year)s/ | SC/XML/2026/0001 |
+| tobacco.stamp.lot | SC/LOT/%(year)s/ | SC/LOT/2026/00001 |
+| tobacco.stamp.breakdown | SC/BRK/%(year)s/ | SC/BRK/2026/00001 |
+| tobacco.stamp.recovery | SC/REC/%(year)s/ | SC/REC/2026/00001 |
+| tobacco.xml.export | SC/XML/%(year)s/ | SC/XML/2026/00001 |
 
 ---
 
 ## 12. TESTES UNITÁRIOS
 
 ```bash
-# Correr todos os testes
-docker compose exec odoo odoo -d stampchain_dev \
-  --test-enable --test-tags stamp_chain \
-  --stop-after-init --no-http
+# Correr todos os testes (DENTRO do container — evita Git Bash interpretar /)
+docker exec stampchain-odoo-1 bash -c \
+  "odoo -d stampchain_dev --test-enable --test-tags /stamp_chain \
+  -u stamp_chain --stop-after-init --no-http"
 
-# Correr teste específico
-docker compose exec odoo odoo -d stampchain_dev \
-  --test-enable --test-tags stamp_chain.test_fifo \
-  --stop-after-init --no-http
+# Verificar resultados
+docker exec stampchain-odoo-1 bash -c \
+  "grep -E '(ERROR:.*Test|Starting Test)' /var/log/odoo/odoo.log | tail -30"
+
+# NOTA: Instalar dependência antes da primeira execução:
+# docker exec -u root stampchain-odoo-1 bash -c "pip3 install odoo-test-helper"
 ```
 
 ### Ficheiros de teste

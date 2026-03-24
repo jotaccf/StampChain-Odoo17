@@ -119,18 +119,19 @@ Componentes OWL 2.0, templates QWeb,
 dashboard em tempo real, integração Odoo backend.
 
 ### Skills demonstradas neste projecto
-- Componente OWL 2.0 com useState e useInterval
-- Polling automático a cada 30 segundos
+- Componente OWL 2.0 com useState e onWillStart
+- Refresh manual via botão (useInterval NÃO existe no OWL 2.0 Odoo 17)
 - useService("orm") para searchRead
-- useService("action") para navegação
+- useService("action") para navegação e doAction
 - Template QWeb com t-foreach, t-if, t-attf-class
 - Registo em registry.category("actions")
 - Cards com cor dinâmica por estado de alerta
+- Tag ir.actions.client DEVE coincidir exactamente com registry.add()
 
 ### Padrão de componente OWL estabelecido
 ```javascript
 /** @odoo-module **/
-import { Component, useState, onWillStart, useInterval } from "@odoo/owl";
+import { Component, useState, onWillStart } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 
@@ -138,15 +139,21 @@ class MeuComponente extends Component {
     static template = "modulo.MeuTemplate";
     setup() {
         this.orm = useService("orm");
+        this.action = useService("action");
         this.state = useState({ dados: [], loading: true });
         onWillStart(async () => await this.loadData());
-        useInterval(async () => await this.loadData(), 30000);
+        // NOTA: useInterval NÃO existe no OWL 2.0 do Odoo 17
+        // Usar botão de refresh manual em vez de polling
     }
     async loadData() {
         const dados = await this.orm.searchRead(
             "modelo.odoo", [], ["campo1", "campo2"]
         );
         Object.assign(this.state, { dados, loading: false });
+    }
+    async refresh() {
+        this.state.loading = true;
+        await this.loadData();
     }
 }
 registry.category("actions").add("modulo.acao", MeuComponente);
