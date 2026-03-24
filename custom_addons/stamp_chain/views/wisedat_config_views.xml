@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="view_wisedat_config_form" model="ir.ui.view">
+    <field name="name">tobacco.wisedat.config.form</field>
+    <field name="model">tobacco.wisedat.config</field>
+    <field name="arch" type="xml">
+      <form>
+        <header>
+          <button name="action_test_connection"
+                  string="Testar Ligacao"
+                  type="object"
+                  class="btn-primary"/>
+        </header>
+        <sheet>
+          <group>
+            <group string="Ligacao">
+              <field name="name"/>
+              <field name="api_url"/>
+              <field name="api_key" password="True"/>
+              <field name="company_id"/>
+            </group>
+            <group string="Sincronizacao">
+              <field name="sync_customers"/>
+              <field name="sync_products"/>
+              <field name="sync_invoices"/>
+              <field name="sync_frequency"/>
+              <field name="last_sync_date"/>
+              <field name="sync_status" widget="badge"/>
+            </group>
+          </group>
+        </sheet>
+      </form>
+    </field>
+  </record>
+
+  <record id="view_wisedat_config_tree" model="ir.ui.view">
+    <field name="name">tobacco.wisedat.config.tree</field>
+    <field name="model">tobacco.wisedat.config</field>
+    <field name="arch" type="xml">
+      <tree>
+        <field name="name"/>
+        <field name="api_url"/>
+        <field name="sync_frequency"/>
+        <field name="last_sync_date"/>
+        <field name="sync_status" widget="badge"/>
+      </tree>
+    </field>
+  </record>
+
+  <record id="action_wisedat_config" model="ir.actions.act_window">
+    <field name="name">Configuracao Wisedat</field>
+    <field name="res_model">tobacco.wisedat.config</field>
+    <field name="view_mode">tree,form</field>
+  </record>
+</odoo>

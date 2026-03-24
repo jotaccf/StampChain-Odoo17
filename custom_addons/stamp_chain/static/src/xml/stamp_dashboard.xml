@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+<t t-name="stamp_chain.StampDashboard" owl="1">
+  <div class="o_action">
+    <div class="container-fluid mt-3">
+
+      <t t-if="state.loading">
+        <div class="text-center mt-5">
+          <i class="fa fa-spinner fa-spin fa-3x"/>
+          <p class="mt-2">A carregar dados...</p>
+        </div>
+      </t>
+
+      <t t-else="">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <h2><i class="fa fa-link"/> StampChain Dashboard</h2>
+          <div>
+            <button class="btn btn-outline-secondary me-2" t-on-click="refresh">
+              <i class="fa fa-refresh"/> Actualizar
+            </button>
+            <button class="btn btn-primary" t-on-click="openReception">
+              <i class="fa fa-plus"/> Receber Lote INCM
+            </button>
+          </div>
+        </div>
+
+        <div class="row mb-4">
+          <t t-foreach="state.zones" t-as="zone" t-key="zone.id">
+            <div class="col-md-4 mb-3">
+              <div t-attf-class="card h-100 #{getZoneCardClass(zone)}"
+                   style="cursor: pointer"
+                   t-on-click="() => this.openZone(zone.id)">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between">
+                    <h5 class="card-title" t-esc="zone.name"/>
+                    <span class="badge bg-secondary" t-esc="zone.code"/>
+                  </div>
+                  <div class="text-center my-3">
+                    <span style="font-size: 2.5rem; font-weight: bold" t-esc="zone.balance"/>
+                    <div class="text-muted">estampilhas disponiveis</div>
+                  </div>
+                  <div class="text-muted small">
+                    Minimo: <t t-esc="zone.min_stock_alert"/>
+                  </div>
+                  <hr/>
+                  <div class="d-flex justify-content-around small">
+                    <span title="Recebidas">
+                      <i class="fa fa-arrow-down text-success"/>
+                      <t t-esc="zone.total_received"/>
+                    </span>
+                    <span title="Utilizadas">
+                      <i class="fa fa-arrow-up text-primary"/>
+                      <t t-esc="zone.total_used"/>
+                    </span>
+                    <span title="Quebras">
+                      <i class="fa fa-times-circle text-danger"/>
+                      <t t-esc="zone.total_broken"/>
+                    </span>
+                  </div>
+                  <t t-if="zone.alert_active">
+                    <div class="alert alert-warning mt-2 mb-0 py-1 text-center small">
+                      <i class="fa fa-exclamation-triangle"/>
+                      Stock abaixo do minimo!
+                    </div>
+                  </t>
+                </div>
+              </div>
+            </div>
+          </t>
+        </div>
+
+        <h4>Ultimos Movimentos</h4>
+        <table class="table table-sm table-hover">
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Zona</th>
+              <th>Tipo</th>
+              <th>Qtd</th>
+              <th>Saldo</th>
+              <th>Referencia</th>
+            </tr>
+          </thead>
+          <tbody>
+            <t t-foreach="state.recentMovements" t-as="move" t-key="move.id">
+              <tr>
+                <td><t t-esc="move.date"/></td>
+                <td><t t-esc="move.zone_id[1]"/></td>
+                <td>
+                  <i t-attf-class="fa #{getMoveTypeIcon(move.move_type)}"/>
+                  <t t-esc="getMoveTypeLabel(move.move_type)"/>
+                </td>
+                <td><t t-esc="move.qty"/></td>
+                <td><t t-esc="move.balance_after"/></td>
+                <td><t t-esc="move.reference"/></td>
+              </tr>
+            </t>
+            <t t-if="!state.recentMovements.length">
+              <tr><td colspan="6" class="text-center text-muted">Sem movimentos registados</td></tr>
+            </t>
+          </tbody>
+        </table>
+      </t>
+
+    </div>
+  </div>
+</t>
+</templates>

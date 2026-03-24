@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <!-- Root Menu -->
+  <menuitem id="menu_stampchain_root"
+            name="StampChain"
+            web_icon="stamp_chain,static/src/img/icon.png"
+            sequence="100"/>
+
+  <!-- Dashboard -->
+  <menuitem id="menu_stampchain_dashboard"
+            name="Dashboard"
+            parent="menu_stampchain_root"
+            action="action_stamp_dashboard"
+            sequence="1"/>
+
+  <!-- Conta Corrente -->
+  <menuitem id="menu_conta_corrente"
+            name="Conta Corrente"
+            parent="menu_stampchain_root"
+            sequence="10"/>
+  <menuitem id="menu_zonas"
+            name="Saldos por Zona"
+            parent="menu_conta_corrente"
+            action="action_stamp_zone"
+            sequence="1"/>
+  <menuitem id="menu_movimentos"
+            name="Movimentos"
+            parent="menu_conta_corrente"
+            action="action_stamp_movement"
+            sequence="2"/>
+
+  <!-- Estampilhas -->
+  <menuitem id="menu_estampilhas"
+            name="Estampilhas"
+            parent="menu_stampchain_root"
+            sequence="20"/>
+  <menuitem id="menu_lotes"
+            name="Lotes INCM"
+            parent="menu_estampilhas"
+            action="action_stamp_lot"
+            sequence="1"/>
+  <menuitem id="menu_series"
+            name="Series"
+            parent="menu_estampilhas"
+            action="action_stamp_serial"
+            sequence="2"/>
+  <menuitem id="menu_quebras"
+            name="Quebras"
+            parent="menu_estampilhas"
+            action="action_stamp_breakdown"
+            sequence="3"/>
+  <menuitem id="menu_recuperacoes"
+            name="Recuperacoes"
+            parent="menu_estampilhas"
+            action="action_stamp_recovery"
+            sequence="4"/>
+
+  <!-- Operacoes -->
+  <menuitem id="menu_operacoes"
+            name="Operacoes"
+            parent="menu_stampchain_root"
+            sequence="30"/>
+  <menuitem id="menu_receber_lote"
+            name="Receber Lote INCM"
+            parent="menu_operacoes"
+            action="action_incm_reception_wizard"
+            sequence="1"/>
+
+  <!-- Configuracoes (apenas managers) -->
+  <menuitem id="menu_config"
+            name="Configuracoes"
+            parent="menu_stampchain_root"
+            groups="stamp_chain.group_stamp_manager"
+            sequence="90"/>
+  <menuitem id="menu_stock_seguranca"
+            name="Stock de Seguranca por Zona"
+            parent="menu_config"
+            action="action_stamp_zone"
+            sequence="1"/>
+  <menuitem id="menu_wisedat"
+            name="Wisedat"
+            parent="menu_config"
+            action="action_wisedat_config"
+            sequence="2"/>
+</odoo>

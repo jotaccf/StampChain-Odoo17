@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="view_stamp_serial_tree" model="ir.ui.view">
+    <field name="name">tobacco.stamp.serial.tree</field>
+    <field name="model">tobacco.stamp.serial</field>
+    <field name="arch" type="xml">
+      <tree>
+        <field name="serial_number"/>
+        <field name="lot_id"/>
+        <field name="zone_id"/>
+        <field name="state" widget="badge"
+               decoration-success="state == 'available'"
+               decoration-info="state == 'reserved'"
+               decoration-muted="state == 'used'"
+               decoration-danger="state == 'broken'"/>
+        <field name="production_id"/>
+        <field name="picking_id"/>
+        <field name="used_date"/>
+      </tree>
+    </field>
+  </record>
+
+  <record id="view_stamp_serial_search" model="ir.ui.view">
+    <field name="name">tobacco.stamp.serial.search</field>
+    <field name="model">tobacco.stamp.serial</field>
+    <field name="arch" type="xml">
+      <search>
+        <field name="serial_number"/>
+        <field name="lot_id"/>
+        <field name="zone_id"/>
+        <filter name="available" string="Disponiveis"
+                domain="[('state', '=', 'available')]"/>
+        <filter name="reserved" string="Reservados"
+                domain="[('state', '=', 'reserved')]"/>
+        <filter name="used" string="Utilizados"
+                domain="[('state', '=', 'used')]"/>
+        <filter name="broken" string="Quebrados"
+                domain="[('state', '=', 'broken')]"/>
+        <group expand="0" string="Agrupar por">
+          <filter name="group_zone" string="Zona"
+                  context="{'group_by': 'zone_id'}"/>
+          <filter name="group_state" string="Estado"
+                  context="{'group_by': 'state'}"/>
+          <filter name="group_lot" string="Lote"
+                  context="{'group_by': 'lot_id'}"/>
+        </group>
+      </search>
+    </field>
+  </record>
+
+  <record id="action_stamp_serial" model="ir.actions.act_window">
+    <field name="name">Series de Estampilhas</field>
+    <field name="res_model">tobacco.stamp.serial</field>
+    <field name="view_mode">tree</field>
+  </record>
+</odoo>

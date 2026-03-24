@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="view_stamp_breakdown_wizard_form" model="ir.ui.view">
+    <field name="name">tobacco.stamp.breakdown.wizard.form</field>
+    <field name="model">tobacco.stamp.breakdown.wizard</field>
+    <field name="arch" type="xml">
+      <form>
+        <group>
+          <group>
+            <field name="production_id"/>
+            <field name="zone_id"/>
+            <field name="breakdown_reason"/>
+          </group>
+          <group>
+            <field name="photo" filename="photo_filename"/>
+            <field name="photo_filename" invisible="1"/>
+          </group>
+        </group>
+        <group>
+          <field name="serial_ids" widget="many2many_tags"/>
+        </group>
+        <group>
+          <field name="description"
+                 required="breakdown_reason == 'other'"/>
+        </group>
+        <footer>
+          <button name="action_confirm"
+                  string="Registar Quebra"
+                  type="object"
+                  class="btn-danger"/>
+          <button string="Cancelar"
+                  class="btn-secondary"
+                  special="cancel"/>
+        </footer>
+      </form>
+    </field>
+  </record>
+</odoo>

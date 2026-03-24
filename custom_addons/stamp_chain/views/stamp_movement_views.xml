@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="view_stamp_movement_tree" model="ir.ui.view">
+    <field name="name">tobacco.stamp.movement.tree</field>
+    <field name="model">tobacco.stamp.movement</field>
+    <field name="arch" type="xml">
+      <tree decoration-success="move_type == 'in'"
+            decoration-danger="move_type == 'breakdown'"
+            create="0" delete="0">
+        <field name="date"/>
+        <field name="zone_id"/>
+        <field name="move_type"/>
+        <field name="qty"/>
+        <field name="balance_after"/>
+        <field name="lot_id"/>
+        <field name="reference"/>
+        <field name="user_id"/>
+      </tree>
+    </field>
+  </record>
+
+  <record id="view_stamp_movement_search" model="ir.ui.view">
+    <field name="name">tobacco.stamp.movement.search</field>
+    <field name="model">tobacco.stamp.movement</field>
+    <field name="arch" type="xml">
+      <search>
+        <field name="reference"/>
+        <field name="zone_id"/>
+        <filter name="entries" string="Entradas"
+                domain="[('move_type', '=', 'in')]"/>
+        <filter name="exits" string="Saidas"
+                domain="[('move_type', '=', 'out')]"/>
+        <filter name="breakdowns" string="Quebras"
+                domain="[('move_type', '=', 'breakdown')]"/>
+        <group expand="0" string="Agrupar por">
+          <filter name="group_zone" string="Zona"
+                  context="{'group_by': 'zone_id'}"/>
+          <filter name="group_type" string="Tipo"
+                  context="{'group_by': 'move_type'}"/>
+          <filter name="group_date" string="Data"
+                  context="{'group_by': 'date:month'}"/>
+        </group>
+      </search>
+    </field>
+  </record>
+
+  <record id="action_stamp_movement" model="ir.actions.act_window">
+    <field name="name">Movimentos de Estampilhas</field>
+    <field name="res_model">tobacco.stamp.movement</field>
+    <field name="view_mode">tree</field>
+  </record>
+</odoo>

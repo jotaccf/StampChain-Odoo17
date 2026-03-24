@@ -1,0 +1,14 @@
+# -*- coding: utf-8 -*-
+from . import stamp_zone
+from . import stamp_lot
+from . import stamp_serial
+from . import stamp_movement
+from . import stamp_breakdown
+from . import production_order
+from . import sale_order
+from . import res_partner
+from . import stock_picking
+from . import wisedat_sync
+from . import xml_export
+from . import stamp_recovery
+from . import stamp_zone_history

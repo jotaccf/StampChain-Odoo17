@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="view_stamp_lot_tree" model="ir.ui.view">
+    <field name="name">tobacco.stamp.lot.tree</field>
+    <field name="model">tobacco.stamp.lot</field>
+    <field name="arch" type="xml">
+      <tree decoration-muted="state == 'exhausted'"
+            decoration-success="state == 'received'">
+        <field name="name"/>
+        <field name="incm_ref"/>
+        <field name="zone_id"/>
+        <field name="reception_date"/>
+        <field name="qty_received"/>
+        <field name="qty_available"/>
+        <field name="qty_used"/>
+        <field name="qty_broken"/>
+        <field name="state" widget="badge"
+               decoration-info="state == 'draft'"
+               decoration-success="state == 'received'"
+               decoration-warning="state == 'in_use'"
+               decoration-muted="state == 'exhausted'"/>
+        <field name="fifo_sequence"/>
+      </tree>
+    </field>
+  </record>
+
+  <record id="view_stamp_lot_form" model="ir.ui.view">
+    <field name="name">tobacco.stamp.lot.form</field>
+    <field name="model">tobacco.stamp.lot</field>
+    <field name="arch" type="xml">
+      <form>
+        <header>
+          <field name="state" widget="statusbar"
+                 statusbar_visible="draft,received,in_use,exhausted"/>
+        </header>
+        <sheet>
+          <div class="oe_title">
+            <h1><field name="name"/></h1>
+          </div>
+          <group>
+            <group>
+              <field name="incm_ref"/>
+              <field name="zone_id"/>
+              <field name="reception_date"/>
+              <field name="fifo_sequence"/>
+            </group>
+            <group>
+              <field name="qty_received"/>
+              <field name="qty_available"/>
+              <field name="qty_used"/>
+              <field name="qty_broken"/>
+            </group>
+          </group>
+          <notebook>
+            <page string="Numeros de Serie" name="serials">
+              <field name="serial_ids">
+                <tree>
+                  <field name="serial_number"/>
+                  <field name="state" widget="badge"/>
+                  <field name="production_id"/>
+                  <field name="used_date"/>
+                </tree>
+              </field>
+            </page>
+            <page string="Notas" name="notes">
+              <field name="notes"/>
+            </page>
+          </notebook>
+        </sheet>
+        <div class="oe_chatter">
+          <field name="message_follower_ids"/>
+          <field name="activity_ids"/>
+          <field name="message_ids"/>
+        </div>
+      </form>
+    </field>
+  </record>
+
+  <record id="view_stamp_lot_search" model="ir.ui.view">
+    <field name="name">tobacco.stamp.lot.search</field>
+    <field name="model">tobacco.stamp.lot</field>
+    <field name="arch" type="xml">
+      <search>
+        <field name="name"/>
+        <field name="incm_ref"/>
+        <field name="zone_id"/>
+        <filter name="received" string="Recebidos"
+                domain="[('state', '=', 'received')]"/>
+        <filter name="in_use" string="Em Uso"
+                domain="[('state', '=', 'in_use')]"/>
+        <group expand="0" string="Agrupar por">
+          <filter name="group_zone" string="Zona"
+                  context="{'group_by': 'zone_id'}"/>
+          <filter name="group_state" string="Estado"
+                  context="{'group_by': 'state'}"/>
+        </group>
+      </search>
+    </field>
+  </record>
+
+  <record id="action_stamp_lot" model="ir.actions.act_window">
+    <field name="name">Lotes INCM</field>
+    <field name="res_model">tobacco.stamp.lot</field>
+    <field name="view_mode">tree,form</field>
+  </record>
+</odoo>

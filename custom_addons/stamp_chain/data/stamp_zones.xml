@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data noupdate="1">
+    <record id="zone_continente"
+            model="tobacco.stamp.zone">
+      <field name="name">Continente</field>
+      <field name="code">PT_C</field>
+      <field name="min_stock_alert">2000</field>
+    </record>
+    <record id="zone_madeira"
+            model="tobacco.stamp.zone">
+      <field name="name">Madeira</field>
+      <field name="code">PT_M</field>
+      <field name="min_stock_alert">2000</field>
+    </record>
+    <record id="zone_acores"
+            model="tobacco.stamp.zone">
+      <field name="name">Acores</field>
+      <field name="code">PT_A</field>
+      <field name="min_stock_alert">2000</field>
+    </record>
+  </data>
+</odoo>

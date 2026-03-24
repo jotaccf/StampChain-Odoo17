@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data noupdate="1">
+    <record id="seq_stamp_lot" model="ir.sequence">
+      <field name="name">Lote INCM Estampilhas</field>
+      <field name="code">tobacco.stamp.lot</field>
+      <field name="prefix">SC/LOT/%(year)s/</field>
+      <field name="padding">5</field>
+    </record>
+    <record id="seq_stamp_breakdown" model="ir.sequence">
+      <field name="name">Quebra de Estampilha</field>
+      <field name="code">tobacco.stamp.breakdown</field>
+      <field name="prefix">SC/BRK/%(year)s/</field>
+      <field name="padding">5</field>
+    </record>
+    <record id="seq_stamp_recovery" model="ir.sequence">
+      <field name="name">Recuperacao de Estampilha</field>
+      <field name="code">tobacco.stamp.recovery</field>
+      <field name="prefix">SC/REC/%(year)s/</field>
+      <field name="padding">5</field>
+    </record>
+    <record id="seq_xml_export" model="ir.sequence">
+      <field name="name">Exportacao XML AT/DGAIEC</field>
+      <field name="code">tobacco.xml.export</field>
+      <field name="prefix">SC/XML/%(year)s/</field>
+      <field name="padding">5</field>
+    </record>
+  </data>
+</odoo>

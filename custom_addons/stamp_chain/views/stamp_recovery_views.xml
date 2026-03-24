@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="view_stamp_recovery_tree" model="ir.ui.view">
+    <field name="name">tobacco.stamp.recovery.tree</field>
+    <field name="model">tobacco.stamp.recovery</field>
+    <field name="arch" type="xml">
+      <tree decoration-info="state == 'draft'"
+            decoration-warning="state == 'submitted'"
+            decoration-success="state in ('approved','released')"
+            decoration-muted="state == 'rejected'">
+        <field name="name"/>
+        <field name="date"/>
+        <field name="zone_id"/>
+        <field name="qty_to_recover"/>
+        <field name="breakdown_id"/>
+        <field name="inspected_by"/>
+        <field name="approved_by"/>
+        <field name="state" widget="badge"
+               decoration-info="state == 'draft'"
+               decoration-warning="state == 'submitted'"
+               decoration-success="state in ('approved','released')"
+               decoration-danger="state == 'rejected'"/>
+      </tree>
+    </field>
+  </record>
+
+  <record id="view_stamp_recovery_form" model="ir.ui.view">
+    <field name="name">tobacco.stamp.recovery.form</field>
+    <field name="model">tobacco.stamp.recovery</field>
+    <field name="arch" type="xml">
+      <form>
+        <header>
+          <button name="action_submit"
+                  string="Submeter para Aprovacao"
+                  type="object"
+                  class="btn-primary"
+                  invisible="state != 'draft'"/>
+          <button name="action_approve"
+                  string="Aprovar"
+                  type="object"
+                  class="btn-success"
+                  invisible="state != 'submitted'"
+                  groups="stamp_chain.group_stamp_manager"/>
+          <button name="action_release"
+                  string="Libertar para Uso"
+                  type="object"
+                  class="btn-primary"
+                  invisible="state != 'approved'"
+                  groups="stamp_chain.group_stamp_manager"/>
+          <button name="action_reject"
+                  string="Rejeitar"
+                  type="object"
+                  class="btn-danger"
+                  invisible="state not in ('submitted','approved')"
+                  groups="stamp_chain.group_stamp_manager"/>
+          <field name="state" widget="statusbar"
+                 statusbar_visible="draft,submitted,approved,released"/>
+        </header>
+        <sheet>
+          <div class="oe_title">
+            <h1><field name="name"/></h1>
+          </div>
+          <group>
+            <group string="Dados">
+              <field name="zone_id"/>
+              <field name="qty_to_recover"/>
+              <field name="breakdown_id"/>
+              <field name="date"/>
+            </group>
+            <group string="Inspeccao">
+              <field name="inspected_by"/>
+              <field name="inspection_date"/>
+              <field name="inspection_photo" filename="inspection_photo_filename"/>
+              <field name="inspection_photo_filename" invisible="1"/>
+            </group>
+          </group>
+          <group>
+            <field name="inspection_notes"/>
+          </group>
+          <group string="Aprovacao"
+                 invisible="state in ('draft',)">
+            <group>
+              <field name="approved_by"/>
+              <field name="approval_date"/>
+            </group>
+            <group>
+              <field name="approval_notes"/>
+            </group>
+          </group>
+          <group invisible="state != 'released'">
+            <field name="movement_id"/>
+          </group>
+          <notebook>
+            <page string="Estampilhas" name="serials">
+              <field name="serial_ids">
+                <tree>
+                  <field name="serial_number"/>
+                  <field name="lot_id"/>
+                  <field name="zone_id"/>
+                  <field name="state" widget="badge"/>
+                </tree>
+              </field>
+            </page>
+          </notebook>
+        </sheet>
+        <div class="oe_chatter">
+          <field name="message_follower_ids"/>
+          <field name="activity_ids"/>
+          <field name="message_ids"/>
+        </div>
+      </form>
+    </field>
+  </record>
+
+  <record id="view_stamp_recovery_search" model="ir.ui.view">
+    <field name="name">tobacco.stamp.recovery.search</field>
+    <field name="model">tobacco.stamp.recovery</field>
+    <field name="arch" type="xml">
+      <search>
+        <field name="name"/>
+        <field name="zone_id"/>
+        <filter name="draft" string="Rascunho"
+                domain="[('state', '=', 'draft')]"/>
+        <filter name="submitted" string="Aguarda Aprovacao"
+                domain="[('state', '=', 'submitted')]"/>
+        <filter name="approved" string="Em Quarentena"
+                domain="[('state', '=', 'approved')]"/>
+        <group expand="0" string="Agrupar por">
+          <filter name="group_state" string="Estado"
+                  context="{'group_by': 'state'}"/>
+          <filter name="group_zone" string="Zona"
+                  context="{'group_by': 'zone_id'}"/>
+        </group>
+      </search>
+    </field>
+  </record>
+
+  <record id="action_stamp_recovery" model="ir.actions.act_window">
+    <field name="name">Recuperacoes de Estampilhas</field>
+    <field name="res_model">tobacco.stamp.recovery</field>
+    <field name="view_mode">tree,form</field>
+  </record>
+</odoo>

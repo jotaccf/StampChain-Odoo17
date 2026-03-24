@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <!-- Tree View -->
+  <record id="view_stamp_zone_tree" model="ir.ui.view">
+    <field name="name">tobacco.stamp.zone.tree</field>
+    <field name="model">tobacco.stamp.zone</field>
+    <field name="arch" type="xml">
+      <tree>
+        <field name="name"/>
+        <field name="code"/>
+        <field name="balance"/>
+        <field name="min_stock_alert"/>
+        <field name="total_received"/>
+        <field name="total_used"/>
+        <field name="total_broken"/>
+      </tree>
+    </field>
+  </record>
+
+  <!-- Form View -->
+  <record id="view_stamp_zone_form" model="ir.ui.view">
+    <field name="name">tobacco.stamp.zone.form</field>
+    <field name="model">tobacco.stamp.zone</field>
+    <field name="arch" type="xml">
+      <form>
+        <sheet>
+          <div class="oe_button_box" name="button_box">
+            <button name="action_change_min_stock"
+                    string="Alterar Minimo"
+                    type="object"
+                    class="oe_stat_button"
+                    icon="fa-sliders"
+                    groups="stamp_chain.group_stamp_manager"/>
+          </div>
+          <div class="oe_title">
+            <h1><field name="name"/></h1>
+          </div>
+          <group>
+            <group>
+              <field name="code"/>
+              <field name="min_stock_alert"/>
+            </group>
+            <group>
+              <field name="balance" class="oe_inline"/>
+              <field name="total_received"/>
+              <field name="total_used"/>
+              <field name="total_broken"/>
+              <field name="alert_active"/>
+            </group>
+          </group>
+          <notebook>
+            <page string="Lotes INCM" name="lots">
+              <field name="lot_ids">
+                <tree>
+                  <field name="name"/>
+                  <field name="incm_ref"/>
+                  <field name="reception_date"/>
+                  <field name="qty_received"/>
+                  <field name="qty_available"/>
+                  <field name="state"/>
+                  <field name="fifo_sequence"/>
+                </tree>
+              </field>
+            </page>
+            <page string="Movimentos" name="movements">
+              <field name="movement_ids">
+                <tree>
+                  <field name="date"/>
+                  <field name="move_type"/>
+                  <field name="qty"/>
+                  <field name="balance_after"/>
+                  <field name="reference"/>
+                  <field name="user_id"/>
+                </tree>
+              </field>
+            </page>
+            <page string="Historico Stock Minimo" name="history"
+                  groups="stamp_chain.group_stamp_manager">
+              <field name="history_ids">
+                <tree>
+                  <field name="date"/>
+                  <field name="previous_value"/>
+                  <field name="new_value"/>
+                  <field name="change_reason"/>
+                  <field name="changed_by"/>
+                </tree>
+              </field>
+            </page>
+          </notebook>
+        </sheet>
+        <div class="oe_chatter">
+          <field name="message_follower_ids"/>
+          <field name="activity_ids"/>
+          <field name="message_ids"/>
+        </div>
+      </form>
+    </field>
+  </record>
+
+  <!-- Kanban View -->
+  <record id="view_stamp_zone_kanban" model="ir.ui.view">
+    <field name="name">tobacco.stamp.zone.kanban</field>
+    <field name="model">tobacco.stamp.zone</field>
+    <field name="arch" type="xml">
+      <kanban>
+        <field name="name"/>
+        <field name="code"/>
+        <field name="balance"/>
+        <field name="min_stock_alert"/>
+        <field name="alert_active"/>
+        <field name="color"/>
+        <templates>
+          <t t-name="kanban-box">
+            <div t-attf-class="oe_kanban_color_#{kanban_getcolor(record.color.raw_value)} oe_kanban_card oe_kanban_global_click">
+              <div class="oe_kanban_content">
+                <strong><field name="name"/></strong>
+                <div>Codigo: <field name="code"/></div>
+                <div class="mt-2">
+                  <strong>Saldo: <field name="balance"/></strong>
+                </div>
+                <div>Minimo: <field name="min_stock_alert"/></div>
+              </div>
+            </div>
+          </t>
+        </templates>
+      </kanban>
+    </field>
+  </record>
+
+  <!-- Search View -->
+  <record id="view_stamp_zone_search" model="ir.ui.view">
+    <field name="name">tobacco.stamp.zone.search</field>
+    <field name="model">tobacco.stamp.zone</field>
+    <field name="arch" type="xml">
+      <search>
+        <field name="name"/>
+        <field name="code"/>
+        <filter name="filter_continente" string="Continente"
+                domain="[('code', '=', 'PT_C')]"/>
+        <filter name="filter_madeira" string="Madeira"
+                domain="[('code', '=', 'PT_M')]"/>
+        <filter name="filter_acores" string="Acores"
+                domain="[('code', '=', 'PT_A')]"/>
+        <group expand="0" string="Agrupar por">
+          <filter name="group_code" string="Zona"
+                  context="{'group_by': 'code'}"/>
+        </group>
+      </search>
+    </field>
+  </record>
+
+  <!-- Action -->
+  <record id="action_stamp_zone" model="ir.actions.act_window">
+    <field name="name">Zonas de Estampilhas</field>
+    <field name="res_model">tobacco.stamp.zone</field>
+    <field name="view_mode">kanban,tree,form</field>
+    <field name="help" type="html">
+      <p class="o_view_nocontent_smiling_face">
+        Crie a primeira zona de estampilhas
+      </p>
+    </field>
+  </record>
+</odoo>

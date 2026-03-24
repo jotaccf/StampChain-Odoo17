@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data>
+    <record id="module_category_stampchain"
+            model="ir.module.category">
+      <field name="name">StampChain</field>
+      <field name="sequence">50</field>
+    </record>
+
+    <record id="group_stamp_user"
+            model="res.groups">
+      <field name="name">Operador de Armazem</field>
+      <field name="category_id"
+             ref="module_category_stampchain"/>
+      <field name="implied_ids"
+             eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+    <record id="group_stamp_production"
+            model="res.groups">
+      <field name="name">Responsavel de Producao</field>
+      <field name="category_id"
+             ref="module_category_stampchain"/>
+      <field name="implied_ids"
+             eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+    <record id="group_stamp_manager"
+            model="res.groups">
+      <field name="name">Gestor StampChain</field>
+      <field name="category_id"
+             ref="module_category_stampchain"/>
+      <field name="implied_ids" eval="[
+        (4, ref('stamp_chain.group_stamp_user')),
+        (4, ref('stamp_chain.group_stamp_production'))
+      ]"/>
+    </record>
+
+    <record id="group_stamp_fiscal"
+            model="res.groups">
+      <field name="name">Contabilidade / Fiscal</field>
+      <field name="category_id"
+             ref="module_category_stampchain"/>
+      <field name="implied_ids"
+             eval="[(4, ref('base.group_user'))]"/>
+    </record>
+  </data>
+</odoo>

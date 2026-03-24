@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="action_stamp_dashboard" model="ir.actions.client">
+    <field name="name">Dashboard StampChain</field>
+    <field name="tag">stamp_chain.stamp_dashboard</field>
+  </record>
+</odoo>
