@@ -1,0 +1,40 @@
+services:
+  db:
+    image: postgres:15
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - stampchain_net
+
+  odoo:
+    image: odoo:17.0
+    restart: unless-stopped
+    depends_on:
+      - db
+    ports:
+      - "8069:8069"
+      - "8072:8072"
+    environment:
+      - HOST=${HOST}
+      - PORT=${PORT}
+      - USER=${USER}
+      - PASSWORD=${PASSWORD}
+    volumes:
+      - odoo_data:/var/lib/odoo
+      - ./config/odoo.conf:/etc/odoo/odoo.conf
+      - ./custom_addons:/mnt/extra-addons
+    networks:
+      - stampchain_net
+
+volumes:
+  postgres_data:
+  odoo_data:
+
+networks:
+  stampchain_net:
+    driver: bridge

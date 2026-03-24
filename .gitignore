@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.pyo
+.env
+*.log
+.DS_Store
+backup/
+postgres_data/
+odoo_data/
+custom_addons/oca/stock-logistics-barcode/

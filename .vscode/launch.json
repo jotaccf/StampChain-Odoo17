@@ -1,0 +1,18 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "StampChain — Attach Odoo Docker",
+      "type": "python",
+      "request": "attach",
+      "host": "localhost",
+      "port": 8888,
+      "pathMappings": [
+        {
+          "localRoot": "${workspaceFolder}/custom_addons",
+          "remoteRoot": "/mnt/extra-addons"
+        }
+      ]
+    }
+  ]
+}

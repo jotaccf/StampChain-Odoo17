@@ -1,0 +1,10 @@
+{
+  "recommendations": [
+    "ms-python.python",
+    "ms-python.pylance",
+    "jigar-patel.odoosnippets",
+    "redhat.vscode-xml",
+    "ms-azuretools.vscode-docker",
+    "odoo-ide.odoo-ide"
+  ]
+}
