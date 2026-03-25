@@ -1,28 +1,15 @@
 {
     'name': 'StampChain',
-    'version': '17.0.2.0.1',
+    'version': '17.0.2.0.2',
     'category': 'Manufacturing',
-    'summary': 'Gestão de Armazém, Produção e '
+    'summary': 'Gestao de Armazem, Producao e '
                'Estampilhas IEC para Tabaco',
-    'description': '''
-        StampChain — Módulo vertical Odoo 17
-        Community para gestão completa do ciclo
-        de vida de produtos sujeitos a IEC
-        (tabaco).
-
-        Funcionalidades:
-        - Conta corrente de estampilhas IEC
-          por zona geográfica
-        - Rastreabilidade individual por
-          número de série
-        - FIFO rigoroso por lote INCM
-        - Integração bidirecional Wisedat
-        - Picking guiado por handheld Android
-          via browser nativo
-        - QR codes para prateleiras e produtos
-        - Controlo de qualidade inline
-        - Arquitectura XML AT/DGAIEC (v2.0)
-    ''',
+    'description': 'StampChain — Modulo vertical Odoo 17 Community '
+                   'para gestao completa do ciclo de vida de produtos '
+                   'sujeitos a IEC (tabaco). Conta corrente de estampilhas, '
+                   'rastreabilidade individual, FIFO rigoroso, integracao '
+                   'Wisedat, picking guiado handheld Android, QR codes, '
+                   'auditoria de discrepancias, XML AT/DGAIEC.',
     'author': 'StampChain Development',
     'license': 'LGPL-3',
     'depends': [
