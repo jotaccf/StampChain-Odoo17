@@ -13,26 +13,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_USER: odoo
-          POSTGRES_PASSWORD: odoo
-          POSTGRES_DB: stampchain_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Odoo 17
-        run: docker pull odoo:17.0
 
       - name: Install OCA dependencies
         run: |
@@ -45,22 +27,36 @@ jobs:
           cp -r oca/manufacture/quality_control_stock_oca custom_addons/oca/
           cp -r oca/manufacture/quality_control_mrp_oca custom_addons/oca/
 
+      - name: Start PostgreSQL
+        run: |
+          docker run -d --name postgres-test \
+            -e POSTGRES_USER=odoo \
+            -e POSTGRES_PASSWORD=odoo \
+            -e POSTGRES_DB=stampchain_test \
+            -p 5432:5432 \
+            postgres:15
+          sleep 10
+          docker exec postgres-test pg_isready -U odoo
+
       - name: Run StampChain tests
         run: |
           docker run --rm \
             --network host \
             -v $PWD/custom_addons:/mnt/extra-addons \
             -v $PWD/oca/barcodes:/mnt/oca-barcodes \
-            -e HOST=localhost \
+            -e HOST=127.0.0.1 \
+            -e PORT=5432 \
             -e USER=odoo \
             -e PASSWORD=odoo \
             odoo:17.0 bash -c "\
               pip3 install python-barcode odoo-test-helper && \
               odoo \
                 --addons-path=/mnt/extra-addons,/mnt/extra-addons/oca,/mnt/oca-barcodes,/usr/lib/python3/dist-packages/odoo/addons \
+                --db_host=127.0.0.1 \
+                --db_port=5432 \
+                --db_user=odoo \
+                --db_password=odoo \
                 -d stampchain_test \
                 -i stamp_chain \
-                --test-enable \
-                --test-tags /stamp_chain \
                 --stop-after-init \
                 --no-http"
