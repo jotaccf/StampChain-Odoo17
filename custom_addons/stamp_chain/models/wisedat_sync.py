@@ -27,17 +27,17 @@ class WisedatConfig(models.Model):
     api_key = fields.Char(
         string='Chave API',
         required=True,
-        groups='base.group_system',
+        groups='stamp_chain.group_stamp_manager',
     )
     api_username = fields.Char(
         string='Utilizador API',
         required=True,
-        groups='base.group_system',
+        groups='stamp_chain.group_stamp_manager',
     )
     api_password = fields.Char(
         string='Password API',
         required=True,
-        groups='base.group_system',
+        groups='stamp_chain.group_stamp_manager',
     )
     company_id = fields.Many2one(
         'res.company',
