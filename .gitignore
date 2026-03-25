@@ -37,8 +37,10 @@ desktop.ini
 *.swp
 *.swo
 
-# OCA repos (large, clone on deploy)
-custom_addons/oca/
+# OCA repos — cloned subdirs excluded
+# Individual modules tracked in custom_addons/oca/
+custom_addons/oca/stock-logistics-barcode/
+custom_addons/oca/quality/
 
 # Project memory (internal use only)
 CLAUDE.md
