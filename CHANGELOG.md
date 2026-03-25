@@ -7,6 +7,42 @@ Versioning: [Semantic Versioning](https://semver.org)
 
 ---
 
+## [17.0.1.2.0] — 2026-03-25
+
+### Added
+- PDF stamp account report per zone (QWeb native)
+- PDF INCM lot traceability report (QWeb native)
+- Operator manual in Portuguese (docs/manual_operadores.md)
+- XML AT v2.0 mapping documentation (docs/xml_mapping_v2.md)
+- Wisedat API mapping documentation (docs/wisedat_api_mapping.md)
+- Deploy checklist for Hyper-V production (docs/deploy_checklist.md)
+- Acceptance tests: 7 self-contained tests (42 total)
+- Warehouse EF/A1 configured in dev environment
+
+### Removed
+- report/stamp_report.xml (replaced by stamp_account_report.xml)
+
+## [17.0.1.1.0] — 2026-03-25
+
+### Added
+- tobacco.fiscal.document model: eDIC/e-DA XML generation, email dispatch, AT code workflow
+- tobacco.warehouse.config model: EF/A1 Odoo-Wisedat mapping
+- Wisedat bidirectional sync: customers, products, stock by warehouse (mock tested)
+- Wisedat Transport Guide creation via API (try/except, non-blocking)
+- AT code insertion wizard with confirmation
+- Warehouse setup wizard (EF + A1 creation)
+- EF direct shipment blocked (UserError)
+- Transfer EF→A1 with stock.move (not empty picking)
+- Fiscal traceability fields: serial→edic_ref, lot→edic_ref
+- Unit tests: 7 fiscal document + 8 Wisedat mock tests
+
+### Changed
+- stamp_lot: added edic_ref, eda_ref, fiscal_document_ids, warehouse_id
+- stamp_serial: added edic_ref, eda_ref, current_warehouse_id
+- stock_picking: added wisedat_doc_id, is_ef_to_a1_transfer, _check_ef_shipment_block
+- wisedat_sync: added warehouse_mapping_ids, full sync methods, transport guide
+- button_validate: surgical edit — _check_ef_shipment_block + Wisedat guide in try/except
+
 ## [17.0.1.0.0] — 2026-03-24
 
 ### Added

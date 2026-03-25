@@ -68,20 +68,39 @@ Full operational module — wizards, dashboard, recovery, security stock.
 
 ---
 
-### v17.0.1.1.0 — Production
+### v17.0.1.1.0 — Fiscal Warehouse
 
-**Target:** April 2026 | **Status:** In Development
+**Released:** March 2026 | **Status:** Released
 
-Production-ready — Wisedat full integration, PDF reports, deploy automation.
+Fiscal warehouse management, eDIC/e-DA, Wisedat integration.
 
-- [ ] Wisedat bidirectional sync (customers, products, invoices)
-- [ ] PDF report: stamp account by zone
-- [ ] PDF report: INCM lot traceability
+- [x] Wisedat bidirectional sync (customers, products, stock — mock tested)
+- [x] Multi-warehouse: EF (fiscal) + A1 (main)
+- [x] eDIC/e-DA XML generation with email dispatch
+- [x] AT code insertion with EF→A1 transfer unlock
+- [x] Wisedat Transport Guide via API (try/except, non-blocking)
+- [x] EF direct shipment blocked
+- [x] deploy.sh production script
+- [x] GitHub Actions CI/CD pipeline
 - [ ] Barcode labels generation (warehouse locations QR codes)
-- [ ] deploy.sh production script
-- [ ] GitHub Actions CI/CD pipeline
-- [ ] Full end-to-end testing
-- [ ] Operator training documentation
+- [ ] Wisedat real API endpoint validation (awaiting credentials)
+
+---
+
+### v17.0.1.2.0 — Reports & Documentation
+
+**Released:** March 2026 | **Status:** Released
+
+PDF reports, operator documentation, acceptance tests.
+
+- [x] PDF report: stamp account by zone (QWeb)
+- [x] PDF report: INCM lot traceability (QWeb)
+- [x] Operator training manual (Portuguese, Markdown)
+- [x] XML AT v2.0 mapping documentation (TODO for real files)
+- [x] Wisedat API mapping documentation
+- [x] Deploy checklist for Hyper-V production
+- [x] Acceptance tests (7 self-contained)
+- [x] Warehouse EF/A1 configured in dev
 
 ---
 
