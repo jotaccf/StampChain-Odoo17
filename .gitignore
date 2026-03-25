@@ -39,3 +39,9 @@ desktop.ini
 
 # OCA repos (large, clone on deploy)
 custom_addons/oca/
+
+# Project memory (internal use only)
+CLAUDE.md
+master_memory.md
+agent_skills.md
+custom_addons/stamp_chain/CLAUDE.md
