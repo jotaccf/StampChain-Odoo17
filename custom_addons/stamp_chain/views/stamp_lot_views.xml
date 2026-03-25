@@ -4,21 +4,22 @@
     <field name="name">tobacco.stamp.lot.tree</field>
     <field name="model">tobacco.stamp.lot</field>
     <field name="arch" type="xml">
-      <tree decoration-muted="state == 'exhausted'"
-            decoration-success="state == 'received'">
-        <field name="name"/>
+      <tree decoration-success="lot_status == 'reception'"
+            decoration-info="lot_status == 'in_machine'"
+            decoration-warning="lot_status == 'partial'"
+            decoration-danger="lot_status == 'exhausted'">
         <field name="incm_ref"/>
         <field name="zone_id"/>
-        <field name="reception_date"/>
+        <field name="serial_prefix" class="font-monospace"/>
+        <field name="lot_status" widget="badge"
+               decoration-success="lot_status == 'reception'"
+               decoration-info="lot_status == 'in_machine'"
+               decoration-warning="lot_status == 'partial'"
+               decoration-danger="lot_status == 'exhausted'"/>
         <field name="qty_received"/>
-        <field name="qty_available"/>
-        <field name="qty_used"/>
-        <field name="qty_broken"/>
-        <field name="state" widget="badge"
-               decoration-info="state == 'draft'"
-               decoration-success="state == 'received'"
-               decoration-warning="state == 'in_use'"
-               decoration-muted="state == 'exhausted'"/>
+        <field name="qty_available" class="fw-bold text-success"/>
+        <field name="qty_consumed"/>
+        <field name="reception_date"/>
         <field name="fifo_sequence"/>
       </tree>
     </field>
@@ -37,18 +38,65 @@
           <div class="oe_title">
             <h1><field name="name"/></h1>
           </div>
+          <!-- Range de seriais -->
+          <div class="sc-hh-code-box" style="margin:12px 0">
+            <div class="sc-hh-code-text">
+              <field name="serial_prefix" readonly="1" nolabel="1" class="font-monospace"/>
+            </div>
+            <div class="sc-hh-code-sub">
+              Sufixo: <field name="serial_suffix_start" readonly="1" nolabel="1" style="display:inline"/>
+              – <field name="serial_suffix_end" readonly="1" nolabel="1" style="display:inline"/>
+              | Disponivel ate: <field name="current_suffix_end" readonly="1" nolabel="1" style="display:inline"/>
+            </div>
+          </div>
+          <!-- Metric cards -->
+          <div class="row mb-3">
+            <div class="col-3">
+              <div class="sc-metric-card">
+                <div class="sc-metric-label">Recebidas</div>
+                <div class="sc-metric-value">
+                  <field name="qty_received" readonly="1" widget="integer" nolabel="1"/>
+                </div>
+              </div>
+            </div>
+            <div class="col-3">
+              <div class="sc-metric-card sc-metric-ok">
+                <div class="sc-metric-label">Disponiveis</div>
+                <div class="sc-metric-value">
+                  <field name="qty_available" readonly="1" widget="integer" nolabel="1"/>
+                </div>
+              </div>
+            </div>
+            <div class="col-3">
+              <div class="sc-metric-card">
+                <div class="sc-metric-label">Consumidas</div>
+                <div class="sc-metric-value">
+                  <field name="qty_consumed" readonly="1" widget="integer" nolabel="1"/>
+                </div>
+              </div>
+            </div>
+            <div class="col-3">
+              <div class="sc-metric-card sc-metric-err">
+                <div class="sc-metric-label">Quebras</div>
+                <div class="sc-metric-value">
+                  <field name="qty_broken" readonly="1" widget="integer" nolabel="1"/>
+                </div>
+              </div>
+            </div>
+          </div>
           <group>
             <group>
               <field name="incm_ref"/>
               <field name="zone_id"/>
               <field name="reception_date"/>
               <field name="fifo_sequence"/>
+              <field name="lot_status" widget="badge"/>
             </group>
             <group>
-              <field name="qty_received"/>
-              <field name="qty_available"/>
-              <field name="qty_used"/>
-              <field name="qty_broken"/>
+              <field name="first_serial_code" readonly="1" class="font-monospace"/>
+              <field name="edic_ref" readonly="1"/>
+              <field name="eda_ref" readonly="1"/>
+              <field name="warehouse_id"/>
             </group>
           </group>
           <notebook>

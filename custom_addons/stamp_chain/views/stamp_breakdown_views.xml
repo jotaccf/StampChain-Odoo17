@@ -4,13 +4,13 @@
     <field name="name">tobacco.stamp.breakdown.tree</field>
     <field name="model">tobacco.stamp.breakdown</field>
     <field name="arch" type="xml">
-      <tree>
+      <tree decoration-danger="1">
         <field name="name"/>
         <field name="date"/>
         <field name="zone_id"/>
         <field name="production_id"/>
         <field name="breakdown_reason"/>
-        <field name="qty_broken"/>
+        <field name="qty_broken" class="fw-bold"/>
         <field name="user_id"/>
       </tree>
     </field>
@@ -25,12 +25,17 @@
           <div class="oe_title">
             <h1><field name="name"/></h1>
           </div>
+          <div class="sc-metric-card sc-metric-err" style="margin:12px 0; max-width:200px">
+            <div class="sc-metric-label">Quebras</div>
+            <div class="sc-metric-value">
+              <field name="qty_broken" readonly="1" widget="integer" nolabel="1"/>
+            </div>
+          </div>
           <group>
             <group>
               <field name="production_id"/>
               <field name="zone_id"/>
               <field name="breakdown_reason"/>
-              <field name="qty_broken"/>
             </group>
             <group>
               <field name="date"/>

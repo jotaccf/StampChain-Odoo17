@@ -7,29 +7,54 @@
       <field name="model">tobacco.stamp.physical.count.wizard</field>
       <field name="arch" type="xml">
         <form>
-          <group>
-            <group>
-              <field name="zone_id"/>
-              <field name="stock_theoretical"/>
-              <field name="stock_real_auto"/>
-            </group>
-            <group>
-              <field name="qty_counted"/>
-              <field name="direction_preview"/>
-              <field name="has_discrepancy" invisible="1"/>
-            </group>
-          </group>
-          <div invisible="not has_discrepancy" class="alert alert-warning">
-            Sera criado um registo de auditoria para esta discrepancia.
+          <field name="has_discrepancy" invisible="1"/>
+          <div class="sc-hh-topbar green">
+            <div>
+              <div class="sc-hh-topbar-title">Contagem Fisica</div>
+              <div class="sc-hh-topbar-sub">Verificar stock real</div>
+            </div>
           </div>
-          <group>
-            <field name="notes"/>
-          </group>
+          <div class="sc-hh-body">
+            <div class="row mb-3">
+              <div class="col-6">
+                <div class="sc-metric-card sc-metric-info">
+                  <div class="sc-metric-label">Teorico (sistema)</div>
+                  <div class="sc-metric-value">
+                    <field name="stock_theoretical" readonly="1" widget="integer" nolabel="1"/>
+                  </div>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="sc-metric-card sc-metric-info">
+                  <div class="sc-metric-label">Real (automatico)</div>
+                  <div class="sc-metric-value">
+                    <field name="stock_real_auto" readonly="1" widget="integer" nolabel="1"/>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <group>
+              <field name="zone_id" readonly="1"/>
+              <div class="sc-hh-label">Contagem fisica real</div>
+              <field name="qty_counted" class="sc-hh-input" nolabel="1"/>
+              <field name="direction_preview" readonly="1"/>
+            </group>
+            <div invisible="not has_discrepancy" class="sc-hh-feedback warn" style="margin-top:8px">
+              <div class="sc-hh-feedback-title">Discrepancia detectada</div>
+              <div class="sc-hh-feedback-sub">
+                Sera criado um registo de auditoria automaticamente.
+              </div>
+            </div>
+            <group>
+              <field name="notes" placeholder="Observacoes sobre a contagem..."/>
+            </group>
+          </div>
           <footer>
             <button name="action_confirm"
                     string="Confirmar Contagem"
                     type="object"
-                    class="btn-primary"/>
+                    class="btn-primary sc-hh-btn primary"
+                    style="min-width:200px"/>
             <button string="Cancelar" class="btn-secondary" special="cancel"/>
           </footer>
         </form>

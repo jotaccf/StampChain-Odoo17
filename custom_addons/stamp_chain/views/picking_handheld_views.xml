@@ -10,7 +10,7 @@
           <button name="action_open_handheld"
                   string="Modo Handheld"
                   type="object"
-                  class="btn-secondary"
+                  class="btn-primary sc-btn-handheld"
                   icon="fa-mobile"
                   invisible="state in ('done', 'cancel')"
                   help="Abrir picking guiado para handheld Android"/>

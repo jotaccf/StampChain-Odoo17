@@ -274,3 +274,11 @@
 .sc-metric-info .sc-metric-value { color: var(--sc-blue); }
 .sc-metric-ok { border-color: var(--sc-green); background: var(--sc-green-light); }
 .sc-metric-ok .sc-metric-value { color: var(--sc-green); }
+
+/* ── Monospace para codigos INCM ────────── */
+.sc-incm-code { font-family: var(--font-mono, monospace); font-size: 14px; font-weight: 500; letter-spacing: 0.08em; color: var(--color-text-primary, #212529); }
+.sc-incm-code-large { font-family: var(--font-mono, monospace); font-size: 24px; font-weight: 500; letter-spacing: 0.1em; color: var(--color-text-primary, #212529); }
+
+/* ── Botao handheld verde ────────────────── */
+.sc-btn-handheld { background: var(--sc-green, #1D9E75) !important; color: white !important; border-color: var(--sc-green, #1D9E75) !important; }
+.sc-btn-handheld:hover { background: var(--sc-green-dark, #085041) !important; }

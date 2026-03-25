@@ -4,18 +4,21 @@
     <field name="name">tobacco.stamp.serial.tree</field>
     <field name="model">tobacco.stamp.serial</field>
     <field name="arch" type="xml">
-      <tree>
-        <field name="serial_number"/>
+      <tree decoration-success="state == 'available'"
+            decoration-danger="state == 'broken'"
+            decoration-warning="state == 'quarantine'">
+        <field name="serial_number" class="font-monospace"/>
         <field name="lot_id"/>
         <field name="zone_id"/>
         <field name="state" widget="badge"
                decoration-success="state == 'available'"
                decoration-info="state == 'reserved'"
-               decoration-muted="state == 'used'"
-               decoration-danger="state == 'broken'"/>
+               decoration-danger="state == 'broken'"
+               decoration-warning="state == 'quarantine'"/>
         <field name="production_id"/>
         <field name="picking_id"/>
         <field name="used_date"/>
+        <field name="edic_ref" class="font-monospace" optional="hide"/>
       </tree>
     </field>
   </record>

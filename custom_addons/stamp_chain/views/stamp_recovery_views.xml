@@ -7,7 +7,7 @@
       <tree decoration-info="state == 'draft'"
             decoration-warning="state == 'submitted'"
             decoration-success="state in ('approved','released')"
-            decoration-muted="state == 'rejected'">
+            decoration-danger="state == 'rejected'">
         <field name="name"/>
         <field name="date"/>
         <field name="zone_id"/>

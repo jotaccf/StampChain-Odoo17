@@ -14,8 +14,12 @@
         <field name="origin_warehouse_id"/>
         <field name="destination_warehouse_id"/>
         <field name="stamp_qty"/>
-        <field name="at_code"/>
-        <field name="state" widget="badge"/>
+        <field name="at_code" class="font-monospace fw-bold"/>
+        <field name="state" widget="badge"
+               decoration-info="state in ('draft','xml_ready')"
+               decoration-warning="state in ('email_sent','at_pending')"
+               decoration-success="state in ('at_approved','transferred')"
+               decoration-danger="state == 'cancelled'"/>
       </tree>
     </field>
   </record>
