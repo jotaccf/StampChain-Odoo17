@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [ main ]
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -37,6 +40,10 @@ jobs:
             -b 17.0 --depth 1 oca/barcodes
           git clone https://github.com/OCA/manufacture.git \
             -b 17.0 --depth 1 oca/manufacture
+          mkdir -p custom_addons/oca
+          cp -r oca/manufacture/quality_control_oca custom_addons/oca/
+          cp -r oca/manufacture/quality_control_stock_oca custom_addons/oca/
+          cp -r oca/manufacture/quality_control_mrp_oca custom_addons/oca/
 
       - name: Run StampChain tests
         run: |
@@ -44,15 +51,16 @@ jobs:
             --network host \
             -v $PWD/custom_addons:/mnt/extra-addons \
             -v $PWD/oca/barcodes:/mnt/oca-barcodes \
-            -v $PWD/oca/manufacture:/mnt/oca-manufacture \
             -e HOST=localhost \
             -e USER=odoo \
             -e PASSWORD=odoo \
-            odoo:17.0 odoo \
-            --addons-path=/mnt/extra-addons,/mnt/oca-barcodes,/mnt/oca-manufacture,/usr/lib/python3/dist-packages/odoo/addons \
-            -d stampchain_test \
-            -i stamp_chain \
-            --test-enable \
-            --test-tags /stamp_chain \
-            --stop-after-init \
-            --no-http
+            odoo:17.0 bash -c "\
+              pip3 install python-barcode odoo-test-helper && \
+              odoo \
+                --addons-path=/mnt/extra-addons,/mnt/extra-addons/oca,/mnt/oca-barcodes,/usr/lib/python3/dist-packages/odoo/addons \
+                -d stampchain_test \
+                -i stamp_chain \
+                --test-enable \
+                --test-tags /stamp_chain \
+                --stop-after-init \
+                --no-http"
