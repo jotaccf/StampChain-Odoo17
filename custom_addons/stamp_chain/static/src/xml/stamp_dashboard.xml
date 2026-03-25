@@ -1,116 +1,145 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
 <t t-name="stamp_chain.StampDashboard" owl="1">
-  <div class="o_action">
-    <div class="container-fluid mt-3">
+  <div class="o_view_controller sc-scroll-root">
 
-      <t t-if="state.loading">
-        <div class="text-center mt-5">
-          <i class="fa fa-spinner fa-spin fa-3x"/>
-          <p class="mt-2">A carregar dados...</p>
+    <div class="sc-header">
+      <div class="sc-logo">
+        <div class="sc-logo-icon">
+          <svg viewBox="0 0 24 24"><path d="M12 2L4 6v6c0 5.5 3.8 10.7 8 12 4.2-1.3 8-6.5 8-12V6l-8-4z"/></svg>
         </div>
-      </t>
+        <div>
+          <div class="sc-logo-name">StampChain</div>
+          <div class="sc-logo-sub">Gestao IEC — Tabaco</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <t t-if="!state.loading">
+          <t t-foreach="getAlertZones()" t-as="az" t-key="az.id">
+            <span class="sc-badge sc-badge-err"><t t-esc="az.code"/> discrepancia</span>
+          </t>
+          <t t-foreach="getMinAlertZones()" t-as="mz" t-key="mz.id">
+            <span class="sc-badge sc-badge-warn"><t t-esc="mz.code"/> minimo</span>
+          </t>
+        </t>
+        <button style="background:none;border:0.5px solid var(--color-border-secondary,#ced4da);border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer;color:var(--color-text-secondary,#6c757d)" t-on-click="refreshData">Actualizar</button>
+      </div>
+    </div>
 
-      <t t-else="">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-          <h2><i class="fa fa-link"/> StampChain Dashboard</h2>
-          <div>
-            <button class="btn btn-outline-secondary me-2" t-on-click="refresh">
-              <i class="fa fa-refresh"/> Actualizar
-            </button>
-            <button class="btn btn-primary" t-on-click="openReception">
-              <i class="fa fa-plus"/> Receber Lote INCM
-            </button>
+    <t t-if="state.loading">
+      <div style="padding:40px;text-align:center;color:var(--color-text-secondary,#6c757d)">A carregar dados...</div>
+    </t>
+
+    <t t-else="">
+      <div style="padding:20px">
+
+        <t t-foreach="getAlertZones()" t-as="az" t-key="az.id">
+          <div class="sc-alert-banner err">
+            <div class="sc-alert-banner-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M12 2L1 21h22L12 2zm-1 8v4h2v-4h-2zm0 6v2h2v-2h-2z"/></svg>
+            </div>
+            <div>
+              <div class="sc-alert-banner-title">Discrepancia — <t t-esc="az.name"/> (<t t-esc="az.code"/>)</div>
+              <div class="sc-alert-banner-sub">
+                <t t-if="az.discrepancy > 0">Faltam <t t-esc="az.discrepancy"/> estampilha(s).</t>
+                <t t-else="">Sobram <t t-esc="Math.abs(az.discrepancy)"/> estampilha(s).</t>
+                <t t-if="az.audit_open_count > 0"> <t t-esc="az.audit_open_count"/> auditoria(s).</t>
+              </div>
+            </div>
           </div>
-        </div>
+        </t>
 
-        <div class="row mb-4">
+        <t t-foreach="getMinAlertZones()" t-as="mz" t-key="mz.id">
+          <div class="sc-alert-banner warn">
+            <div class="sc-alert-banner-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M12 2L1 21h22L12 2zm-1 8v4h2v-4h-2zm0 6v2h2v-2h-2z"/></svg>
+            </div>
+            <div>
+              <div class="sc-alert-banner-title">Stock abaixo do minimo — <t t-esc="mz.name"/></div>
+              <div class="sc-alert-banner-sub">Saldo: <t t-esc="mz.balance"/> | Minimo: <t t-esc="mz.min_stock_alert"/> — Efectuar pedido INCM.</div>
+            </div>
+          </div>
+        </t>
+
+        <div class="sc-section-title">Saldos por zona IEC</div>
+        <div class="sc-zone-grid">
           <t t-foreach="state.zones" t-as="zone" t-key="zone.id">
-            <div class="col-md-4 mb-3">
-              <div t-attf-class="card h-100 #{getZoneCardClass(zone)}"
-                   style="cursor: pointer"
-                   t-on-click="() => this.openZone(zone.id)">
-                <div class="card-body">
-                  <div class="d-flex justify-content-between">
-                    <h5 class="card-title" t-esc="zone.name"/>
-                    <span class="badge bg-secondary" t-esc="zone.code"/>
-                  </div>
-                  <div class="text-center my-3">
-                    <span style="font-size: 2.5rem; font-weight: bold" t-esc="zone.balance"/>
-                    <div class="text-muted">estampilhas disponiveis</div>
-                  </div>
-                  <div class="text-muted small">
-                    Minimo: <t t-esc="zone.min_stock_alert"/>
-                  </div>
-                  <hr/>
-                  <div class="d-flex justify-content-around small">
-                    <span title="Recebidas">
-                      <i class="fa fa-arrow-down text-success"/>
-                      <t t-esc="zone.total_received"/>
-                    </span>
-                    <span title="Utilizadas">
-                      <i class="fa fa-arrow-up text-primary"/>
-                      <t t-esc="zone.total_used"/>
-                    </span>
-                    <span title="Quebras">
-                      <i class="fa fa-times-circle text-danger"/>
-                      <t t-esc="zone.total_broken"/>
-                    </span>
-                  </div>
-                  <t t-if="zone.alert_active">
-                    <div class="alert alert-warning mt-2 mb-0 py-1 text-center small">
-                      <i class="fa fa-exclamation-triangle"/>
-                      Stock abaixo do minimo!
-                    </div>
-                  </t>
-                  <t t-if="zone.discrepancy_active">
-                    <div t-attf-class="mt-2 py-1 px-2 rounded text-center small #{getDiscrepancyClass(zone)}">
-                      <t t-esc="getDiscrepancyLabel(zone)"/>
-                      <t t-if="zone.audit_open_count > 0">
-                        (<t t-esc="zone.audit_open_count"/> auditoria(s))
-                      </t>
-                    </div>
-                  </t>
-                </div>
+            <div t-attf-class="#{getZoneCardClass(zone)}" t-on-click="() => openZone(zone.id)">
+              <div class="sc-zone-card-header">
+                <span class="sc-zone-name"><t t-esc="zone.name"/></span>
+                <span class="sc-zone-code"><t t-esc="zone.code"/></span>
+              </div>
+              <div t-attf-class="#{getBalanceClass(zone)}"><t t-esc="zone.balance.toLocaleString('pt-PT')"/></div>
+              <div class="sc-zone-label">estampilhas disponiveis</div>
+              <t t-if="zone.alert_active and !zone.discrepancy_active">
+                <div class="sc-inline-alert min-warn">Abaixo do minimo (<t t-esc="zone.min_stock_alert"/>)</div>
+              </t>
+              <t t-if="zone.discrepancy_active">
+                <div t-attf-class="#{getDiscClass(zone)}"><t t-esc="getDiscLabel(zone)"/></div>
+              </t>
+              <div class="sc-zone-footer">
+                <span style="display:flex;align-items:center;gap:4px"><span class="sc-dot green"/><t t-esc="zone.total_received.toLocaleString('pt-PT')"/> rec.</span>
+                <span style="display:flex;align-items:center;gap:4px"><span class="sc-dot red"/><t t-esc="zone.total_used.toLocaleString('pt-PT')"/> usadas</span>
+                <span style="display:flex;align-items:center;gap:4px"><span class="sc-dot amber"/><t t-esc="zone.total_broken"/> quebras</span>
               </div>
             </div>
           </t>
         </div>
 
-        <h4>Ultimos Movimentos</h4>
-        <table class="table table-sm table-hover">
-          <thead>
-            <tr>
-              <th>Data</th>
-              <th>Zona</th>
-              <th>Tipo</th>
-              <th>Qtd</th>
-              <th>Saldo</th>
-              <th>Referencia</th>
-            </tr>
-          </thead>
-          <tbody>
-            <t t-foreach="state.recentMovements" t-as="move" t-key="move.id">
-              <tr>
-                <td><t t-esc="move.date"/></td>
-                <td><t t-esc="move.zone_id[1]"/></td>
-                <td>
-                  <i t-attf-class="fa #{getMoveTypeIcon(move.move_type)}"/>
-                  <t t-esc="getMoveTypeLabel(move.move_type)"/>
-                </td>
-                <td><t t-esc="move.qty"/></td>
-                <td><t t-esc="move.balance_after"/></td>
-                <td><t t-esc="move.reference"/></td>
-              </tr>
-            </t>
-            <t t-if="!state.recentMovements.length">
-              <tr><td colspan="6" class="text-center text-muted">Sem movimentos registados</td></tr>
-            </t>
-          </tbody>
-        </table>
-      </t>
+        <div class="sc-section-title">Accoes rapidas</div>
+        <div class="sc-actions-grid">
+          <button class="sc-action-btn" t-on-click="() => openAction('stamp_chain.action_incm_ocr_reception_wizard')">
+            <div class="sc-action-icon green"><svg width="18" height="18" viewBox="0 0 24 24" fill="#1D9E75"><path d="M9 2L7.17 4H4a2 2 0 00-2 2v12a2 2 0 002 2h16a2 2 0 002-2V6a2 2 0 00-2-2h-3.17L15 2H9zm3 15a5 5 0 110-10 5 5 0 010 10z"/></svg></div>
+            <div><div class="sc-action-title">Receber lote INCM</div><div class="sc-action-sub">OCR + extrapolacao</div></div>
+          </button>
+          <button class="sc-action-btn" t-on-click="() => openAction('stamp_chain.action_production_start_wizard')">
+            <div class="sc-action-icon amber"><svg width="18" height="18" viewBox="0 0 24 24" fill="#BA7517"><path d="M8 5v14l11-7z"/></svg></div>
+            <div><div class="sc-action-title">Iniciar producao</div><div class="sc-action-sub">Scan x2 lotes</div></div>
+          </button>
+          <button class="sc-action-btn" t-on-click="() => openAction('stamp_chain.action_production_end_wizard')">
+            <div class="sc-action-icon red"><svg width="18" height="18" viewBox="0 0 24 24" fill="#E24B4A"><path d="M6 6h12v12H6z"/></svg></div>
+            <div><div class="sc-action-title">Fim de producao</div><div class="sc-action-sub">Scan sobrante x2</div></div>
+          </button>
+          <button class="sc-action-btn" t-on-click="() => openAction('stamp_chain.action_stamp_audit')">
+            <div class="sc-action-icon red"><svg width="18" height="18" viewBox="0 0 24 24" fill="#E24B4A"><path d="M12 2L1 21h22L12 2zm-1 8v4h2v-4h-2zm0 6v2h2v-2h-2z"/></svg></div>
+            <div><div class="sc-action-title">Auditoria</div><div class="sc-action-sub">Discrepancias</div></div>
+          </button>
+          <button class="sc-action-btn" t-on-click="() => openAction('stamp_chain.action_fiscal_document_edic')">
+            <div class="sc-action-icon blue"><svg width="18" height="18" viewBox="0 0 24 24" fill="#378ADD"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg></div>
+            <div><div class="sc-action-title">Gerar eDIC</div><div class="sc-action-sub">EF - A1</div></div>
+          </button>
+          <button class="sc-action-btn" t-on-click="() => openAction('stamp_chain.action_physical_count_wizard')">
+            <div class="sc-action-icon teal"><svg width="18" height="18" viewBox="0 0 24 24" fill="#0F6E56"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg></div>
+            <div><div class="sc-action-title">Contagem fisica</div><div class="sc-action-sub">Verificar stock</div></div>
+          </button>
+        </div>
 
-    </div>
+        <div class="sc-section-title">Ultimos movimentos</div>
+        <div class="sc-movements-table">
+          <div class="sc-movements-header">
+            <span class="sc-movements-header-title">Conta corrente</span>
+            <span class="sc-movements-header-sub">Actualizado as <t t-esc="state.lastUpdate"/></span>
+          </div>
+          <div class="sc-movements-col-header">
+            <span>Referencia</span><span>Zona</span><span>Tipo</span><span style="text-align:right">Qtd</span><span style="text-align:right">Saldo</span>
+          </div>
+          <t t-foreach="state.recentMovements" t-as="mv" t-key="mv.id">
+            <div class="sc-movements-row">
+              <span class="sc-mono"><t t-esc="mv.reference or '—'"/></span>
+              <span style="font-size:12px"><t t-esc="mv.zone_id[1] or ''"/></span>
+              <span><span t-attf-class="#{getMovTypeClass(mv.move_type)}"><t t-esc="getMovTypeLabel(mv.move_type)"/></span></span>
+              <span t-attf-class="#{getQtyClass(mv.move_type)}" style="text-align:right;font-weight:500"><t t-esc="getQtyPrefix(mv.move_type)"/><t t-esc="mv.qty"/></span>
+              <span style="text-align:right;font-weight:500;font-size:13px"><t t-esc="mv.balance_after.toLocaleString('pt-PT')"/></span>
+            </div>
+          </t>
+          <t t-if="!state.recentMovements.length">
+            <div class="sc-movements-row" style="justify-content:center;color:var(--color-text-secondary,#6c757d)">Sem movimentos registados</div>
+          </t>
+        </div>
+
+      </div>
+    </t>
+
   </div>
 </t>
 </templates>
