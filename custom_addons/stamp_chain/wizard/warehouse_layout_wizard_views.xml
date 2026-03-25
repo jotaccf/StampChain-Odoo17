@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="view_warehouse_layout_wizard_form" model="ir.ui.view">
+    <field name="name">tobacco.warehouse.layout.wizard.form</field>
+    <field name="model">tobacco.warehouse.layout.wizard</field>
+    <field name="arch" type="xml">
+      <form>
+        <field name="warehouse_config_id" invisible="1"/>
+        <div class="sc-hh-topbar green">
+          <div>
+            <div class="sc-hh-topbar-title">Configurar Layout Armazem</div>
+            <div class="sc-hh-topbar-sub">Gerar localizacoes com QR codes</div>
+          </div>
+        </div>
+        <div class="sc-hh-body">
+          <group>
+            <group string="Armazem">
+              <field name="warehouse_id" readonly="1"/>
+              <field name="existing_count" readonly="1"
+                     string="Localizacoes existentes"/>
+            </group>
+            <group string="Dimensoes">
+              <field name="num_corridors"/>
+              <field name="num_shelves"/>
+              <field name="num_levels"/>
+              <field name="num_positions"/>
+              <field name="total_locations" readonly="1"
+                     class="fw-bold"/>
+            </group>
+          </group>
+          <group string="Preview">
+            <field name="preview_text" readonly="1" nolabel="1"
+                   style="font-family:monospace; white-space:pre;
+                          background:#f8f9fa; padding:12px;
+                          border-radius:8px; font-size:13px"/>
+          </group>
+          <div class="sc-hh-feedback info" style="margin-top:8px">
+            <div class="sc-hh-feedback-sub">
+              Os valores serao gravados na configuracao do armazem.
+              Localizacoes existentes nunca sao apagadas.
+            </div>
+          </div>
+        </div>
+        <footer>
+          <button name="action_generate" string="Gerar Localizacoes"
+                  type="object" class="btn-primary sc-hh-btn primary"
+                  style="min-width:200px"/>
+          <button string="Cancelar" class="btn-secondary" special="cancel"/>
+        </footer>
+      </form>
+    </field>
+  </record>
+  <record id="action_warehouse_layout_wizard" model="ir.actions.act_window">
+    <field name="name">Configurar Layout Armazem</field>
+    <field name="res_model">tobacco.warehouse.layout.wizard</field>
+    <field name="view_mode">form</field>
+    <field name="target">new</field>
+  </record>
+</odoo>

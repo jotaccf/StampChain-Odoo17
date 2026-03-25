@@ -72,3 +72,6 @@ access_physical_count_fiscal,tobacco.stamp.physical.count.fiscal,model_tobacco_s
 access_physical_count_wizard_user,tobacco.stamp.physical.count.wizard.user,model_tobacco_stamp_physical_count_wizard,stamp_chain.group_stamp_user,1,1,1,1
 access_physical_count_wizard_production,tobacco.stamp.physical.count.wizard.production,model_tobacco_stamp_physical_count_wizard,stamp_chain.group_stamp_production,1,1,1,1
 access_physical_count_wizard_manager,tobacco.stamp.physical.count.wizard.manager,model_tobacco_stamp_physical_count_wizard,stamp_chain.group_stamp_manager,1,1,1,1
+access_layout_wizard_user,tobacco.warehouse.layout.wizard.user,model_tobacco_warehouse_layout_wizard,stamp_chain.group_stamp_user,1,1,1,1
+access_layout_wizard_production,tobacco.warehouse.layout.wizard.production,model_tobacco_warehouse_layout_wizard,stamp_chain.group_stamp_production,1,1,1,1
+access_layout_wizard_manager,tobacco.warehouse.layout.wizard.manager,model_tobacco_warehouse_layout_wizard,stamp_chain.group_stamp_manager,1,1,1,1

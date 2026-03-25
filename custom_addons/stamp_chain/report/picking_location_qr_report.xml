@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data>
+    <record id="action_location_qr_report" model="ir.actions.report">
+      <field name="name">Etiqueta QR — Localizacao</field>
+      <field name="model">stock.location</field>
+      <field name="report_type">qweb-pdf</field>
+      <field name="report_name">stamp_chain.location_qr_report</field>
+      <field name="report_file">stamp_chain.location_qr_report</field>
+      <field name="binding_model_id" ref="stock.model_stock_location"/>
+      <field name="binding_type">report</field>
+    </record>
+    <template id="location_qr_report">
+      <t t-call="web.html_container">
+        <t t-foreach="docs" t-as="loc">
+          <div style="width:80mm; height:50mm; padding:4mm;
+                      border:0.5px solid #ccc;
+                      display:flex; flex-direction:column;
+                      align-items:center; justify-content:center;
+                      page-break-after:always; font-family:monospace;">
+            <t t-if="loc.barcode">
+              <img t-att-src="'/report/barcode/QR/' + loc.barcode + '?width=120&amp;height=120'"
+                   style="width:120px; height:120px; margin-bottom:4mm"/>
+            </t>
+            <div style="font-size:16pt; font-weight:bold;
+                        letter-spacing:0.1em; color:#1D9E75;
+                        margin-bottom:2mm;">
+              <t t-esc="loc.barcode or loc.name"/>
+            </div>
+            <div style="font-size:9pt; color:#666;">
+              <t t-esc="loc.location_id.name or ''"/>
+            </div>
+            <div style="font-size:8pt; color:#999; margin-top:2mm;
+                        border-top:0.5px solid #eee; padding-top:2mm;
+                        width:100%; text-align:center;">
+              StampChain — FIFO
+            </div>
+          </div>
+        </t>
+      </t>
+    </template>
+  </data>
+</odoo>

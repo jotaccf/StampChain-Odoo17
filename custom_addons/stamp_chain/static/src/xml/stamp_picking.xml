@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+<t t-name="stamp_chain.StampPickingHandheld" owl="1">
+  <div class="o_view_controller">
+
+    <t t-if="state.loading">
+      <div class="sc-hh-topbar green">
+        <div>
+          <div class="sc-hh-topbar-title">Picking</div>
+          <div class="sc-hh-topbar-sub">A carregar...</div>
+        </div>
+      </div>
+    </t>
+
+    <t t-elif="state.step === 'done'">
+      <div class="sc-hh-topbar green">
+        <div>
+          <div class="sc-hh-topbar-title">Picking concluido</div>
+          <div class="sc-hh-topbar-sub">Todas as linhas processadas</div>
+        </div>
+      </div>
+      <div class="sc-hh-body">
+        <div class="sc-hh-feedback ok">
+          <div class="sc-hh-feedback-title">Picking completo!</div>
+          <div class="sc-hh-feedback-sub">
+            <t t-esc="state.totalLines"/> linha(s) processadas.
+          </div>
+        </div>
+        <button class="sc-hh-btn primary" t-on-click="validatePicking">
+          Validar Picking
+        </button>
+      </div>
+    </t>
+
+    <t t-else="">
+      <div t-attf-class="sc-hh-topbar #{state.step === 'location' ? 'amber' : state.step === 'product' ? 'green' : 'blue'}">
+        <div>
+          <div class="sc-hh-topbar-title">
+            <t t-if="state.step === 'location'">Scan localizacao</t>
+            <t t-elif="state.step === 'product'">Scan produto</t>
+            <t t-else="">Confirmar quantidade</t>
+          </div>
+          <div class="sc-hh-topbar-sub">
+            <t t-esc="state.pickingName"/> — Linha <t t-esc="state.progress"/>
+          </div>
+        </div>
+      </div>
+
+      <div class="sc-hh-body">
+        <div class="sc-hh-lot-row" style="margin-bottom:14px">
+          <div>
+            <div class="sc-hh-lot-code"><t t-esc="state.currentLocation"/></div>
+            <div class="sc-hh-lot-avail">
+              <t t-esc="state.currentProduct"/> — <t t-esc="state.currentQty"/> un.
+            </div>
+          </div>
+          <span t-attf-class="sc-badge #{state.step === 'location' ? 'sc-badge-warn' : 'sc-badge-ok'}">
+            <t t-if="state.step === 'location'">Ir buscar</t>
+            <t t-elif="state.step === 'product'">Scan produto</t>
+            <t t-else="">Confirmar</t>
+          </span>
+        </div>
+
+        <t t-if="state.successMsg">
+          <div class="sc-hh-feedback ok" style="margin-bottom:14px">
+            <div class="sc-hh-feedback-title">OK</div>
+            <div class="sc-hh-feedback-sub"><t t-esc="state.successMsg"/></div>
+          </div>
+        </t>
+
+        <t t-if="state.errorMsg">
+          <div class="sc-hh-feedback err" style="margin-bottom:14px">
+            <div class="sc-hh-feedback-title">Erro de scan</div>
+            <div class="sc-hh-feedback-sub"><t t-esc="state.errorMsg"/></div>
+          </div>
+        </t>
+
+        <t t-if="state.step !== 'qty'">
+          <div class="sc-hh-label">Scan QR / barcode</div>
+          <div style="display:flex;gap:8px;margin-bottom:10px">
+            <input t-ref="scanInput" type="text" class="sc-hh-input"
+                   style="flex:1;margin-bottom:0"
+                   placeholder="Scan ou digitar..."
+                   t-on-input="onScanInput"
+                   t-on-keydown="onScanKeydown"
+                   autocomplete="off" autocorrect="off" spellcheck="false"/>
+            <button class="sc-hh-btn primary"
+                    style="width:64px;flex-shrink:0;margin-bottom:0"
+                    t-on-click="onScanSubmit">OK</button>
+          </div>
+        </t>
+
+        <t t-if="state.step === 'qty'">
+          <div class="sc-hh-label">Quantidade a recolher</div>
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;justify-content:center">
+            <button class="sc-hh-btn secondary"
+                    style="width:64px;font-size:28px;flex-shrink:0;margin-bottom:0"
+                    t-on-click="() =&gt; this.adjustQty(-1)">-</button>
+            <div style="font-size:48px;font-weight:500;font-variant-numeric:tabular-nums;min-width:80px;text-align:center">
+              <t t-esc="state.doneQty"/>
+            </div>
+            <button class="sc-hh-btn primary"
+                    style="width:64px;font-size:28px;flex-shrink:0;margin-bottom:0"
+                    t-on-click="() =&gt; this.adjustQty(1)">+</button>
+          </div>
+          <button class="sc-hh-btn success" t-on-click="confirmQty">
+            Confirmar <t t-esc="state.doneQty"/> unidades
+          </button>
+          <button class="sc-hh-btn muted"
+                  t-on-click="() =&gt; { this.state.step = 'product'; }">
+            Repetir scan produto
+          </button>
+        </t>
+      </div>
+    </t>
+
+  </div>
+</t>
+</templates>

@@ -37,6 +37,21 @@ class StockPicking(models.Model):
         string='Documento Fiscal (eDIC/e-DA)',
         readonly=True,
     )
+    # — Handheld picking —
+    current_move_line_id = fields.Many2one(
+        'stock.move.line',
+        string='Linha Actual Handheld',
+    )
+    picking_mode = fields.Selection([
+        ('normal', 'Normal'),
+        ('handheld', 'Handheld Guiado'),
+    ], default='normal')
+    scan_location_validated = fields.Boolean(
+        default=False,
+    )
+    scan_product_validated = fields.Boolean(
+        default=False,
+    )
 
     @api.depends(
         'picking_type_id',
@@ -58,6 +73,167 @@ class StockPicking(models.Model):
                 .warehouse_id.id
                 == config.warehouse_id.id
             )
+
+    def _get_sorted_move_lines(self):
+        """Linhas ordenadas por rota de armazem."""
+        self.ensure_one()
+        return self.move_line_ids.sorted(
+            key=lambda l: (
+                l.location_id.complete_name or ''
+            )
+        )
+
+    def action_open_handheld(self):
+        """C2: ir.actions.client via metodo."""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'stamp_chain.picking_handheld',
+            'context': {'picking_id': self.id},
+        }
+
+    def action_validate_location_scan(
+        self, scanned_barcode
+    ):
+        self.ensure_one()
+        lines = self._get_sorted_move_lines()
+        if not lines:
+            return {
+                'ok': False,
+                'message': 'Sem linhas de picking',
+            }
+        current = (
+            self.current_move_line_id
+            or lines[0]
+        )
+        expected = (
+            current.location_id.barcode
+            or current.location_id.name
+        )
+        if scanned_barcode == expected:
+            self.write({
+                'scan_location_validated': True,
+                'current_move_line_id': current.id,
+            })
+            return {
+                'ok': True,
+                'location': expected,
+                'product': current.product_id.name,
+                'qty_todo': current.quantity,
+                'move_line_id': current.id,
+            }
+        return {
+            'ok': False,
+            'message': (
+                f'Localizacao errada!\n'
+                f'Esperado: {expected}\n'
+                f'Lido: {scanned_barcode}'
+            ),
+        }
+
+    def action_validate_product_scan(
+        self, scanned_barcode
+    ):
+        self.ensure_one()
+        if not self.scan_location_validated:
+            return {
+                'ok': False,
+                'message': (
+                    'Valide a localizacao primeiro'
+                ),
+            }
+        current = self.current_move_line_id
+        if not current:
+            return {
+                'ok': False,
+                'message': 'Sem linha activa',
+            }
+        product = current.product_id
+        valid = [
+            product.barcode,
+            product.default_code,
+        ]
+        try:
+            if product.barcode_ids:
+                valid += (
+                    product.barcode_ids.mapped(
+                        'name'
+                    )
+                )
+        except Exception:
+            pass
+        valid = [b for b in valid if b]
+        if scanned_barcode in valid:
+            self.scan_product_validated = True
+            return {
+                'ok': True,
+                'product': product.name,
+                'qty_todo': current.quantity,
+                'move_line_id': current.id,
+            }
+        return {
+            'ok': False,
+            'message': (
+                f'Produto errado!\n'
+                f'Esperado: {product.name}\n'
+                f'Lido: {scanned_barcode}'
+            ),
+        }
+
+    def action_confirm_qty(
+        self, qty_done, move_line_id
+    ):
+        """C5: recebe move_line_id."""
+        self.ensure_one()
+        line = self.env[
+            'stock.move.line'
+        ].browse(move_line_id)
+        if not line.exists():
+            return {
+                'ok': False,
+                'message': 'Linha invalida',
+            }
+        line.quantity = qty_done
+        lines = self._get_sorted_move_lines()
+        line_ids = list(lines.ids)
+        current_idx = (
+            line_ids.index(move_line_id)
+            if move_line_id in line_ids
+            else -1
+        )
+        next_idx = current_idx + 1
+        if next_idx >= len(lines):
+            self.write({
+                'current_move_line_id': False,
+                'scan_location_validated': False,
+                'scan_product_validated': False,
+            })
+            return {
+                'ok': True,
+                'done': True,
+                'message': 'Picking concluido!',
+            }
+        next_line = lines[next_idx]
+        self.write({
+            'current_move_line_id': next_line.id,
+            'scan_location_validated': False,
+            'scan_product_validated': False,
+        })
+        return {
+            'ok': True,
+            'done': False,
+            'next_location': (
+                next_line.location_id.barcode
+                or next_line.location_id.name
+            ),
+            'next_product':
+                next_line.product_id.name,
+            'next_qty': next_line.quantity,
+            'next_move_line_id': next_line.id,
+            'progress': (
+                f'{next_idx + 1}/{len(lines)}'
+            ),
+        }
 
     def _check_ef_shipment_block(self):
         for picking in self:

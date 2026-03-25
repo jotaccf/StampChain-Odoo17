@@ -75,6 +75,22 @@
             parent="menu_operacoes"
             action="action_production_end_wizard"
             sequence="3"/>
+  <menuitem id="menu_picking_handheld"
+            name="Picking Handheld"
+            parent="menu_operacoes"
+            action="stock.action_picking_tree_all"
+            sequence="4"/>
+  <menuitem id="menu_layout_armazem"
+            name="Configurar Layout Armazem"
+            parent="menu_operacoes"
+            action="action_warehouse_layout_wizard"
+            sequence="5"
+            groups="stamp_chain.group_stamp_manager"/>
+  <menuitem id="menu_location_qr"
+            name="Gerar Etiquetas QR"
+            parent="menu_operacoes"
+            action="stock.action_location_form"
+            sequence="6"/>
 
   <!-- Documentos Fiscais -->
   <menuitem id="menu_fiscal_docs"

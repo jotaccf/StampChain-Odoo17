@@ -1,6 +1,6 @@
 {
     'name': 'StampChain',
-    'version': '17.0.1.4.0',
+    'version': '17.0.1.6.0',
     'category': 'Manufacturing',
     'summary': 'Gestão de Armazém, Produção e '
                'Estampilhas IEC para Tabaco',
@@ -67,6 +67,9 @@
         'views/stamp_found_views.xml',
         'report/stamp_account_report.xml',
         'report/stamp_lot_traceability_report.xml',
+        'report/picking_location_qr_report.xml',
+        'views/picking_handheld_views.xml',
+        'wizard/warehouse_layout_wizard_views.xml',
         'views/menus.xml',
     ],
     'assets': {
@@ -81,6 +84,10 @@
             'stamp_ocr_widget.xml',
             'stamp_chain/static/src/css/'
             'stamp.css',
+            'stamp_chain/static/src/js/'
+            'stamp_picking.js',
+            'stamp_chain/static/src/xml/'
+            'stamp_picking.xml',
         ],
     },
     'installable': True,

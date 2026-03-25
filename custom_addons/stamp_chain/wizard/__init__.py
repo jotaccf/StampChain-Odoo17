@@ -8,3 +8,4 @@ from . import incm_ocr_reception_wizard
 from . import production_start_wizard
 from . import production_end_wizard
 from . import physical_count_wizard
+from . import warehouse_layout_wizard

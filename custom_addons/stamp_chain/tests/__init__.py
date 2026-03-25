@@ -11,3 +11,4 @@ from . import test_wisedat_integration
 from . import test_acceptance
 from . import test_ocr_wizards
 from . import test_discrepancy
+from . import test_picking_handheld
