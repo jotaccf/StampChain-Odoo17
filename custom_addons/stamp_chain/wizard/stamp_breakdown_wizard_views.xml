@@ -5,32 +5,41 @@
     <field name="model">tobacco.stamp.breakdown.wizard</field>
     <field name="arch" type="xml">
       <form>
-        <group>
+        <div class="sc-hh-topbar" style="background:var(--sc-amber, #BA7517)">
+          <div>
+            <div class="sc-hh-topbar-title">Registar Quebra</div>
+            <div class="sc-hh-topbar-sub">Estampilhas danificadas</div>
+          </div>
+        </div>
+        <div class="sc-hh-body">
           <group>
-            <field name="production_id"/>
-            <field name="zone_id"/>
-            <field name="breakdown_reason"/>
+            <group>
+              <field name="production_id" readonly="1"/>
+              <field name="zone_id" readonly="1"/>
+              <field name="breakdown_reason"/>
+            </group>
+            <group>
+              <field name="photo" filename="photo_filename" widget="image"/>
+              <field name="photo_filename" invisible="1"/>
+            </group>
           </group>
           <group>
-            <field name="photo" filename="photo_filename"/>
-            <field name="photo_filename" invisible="1"/>
+            <field name="serial_ids" widget="many2many_tags"/>
           </group>
-        </group>
-        <group>
-          <field name="serial_ids" widget="many2many_tags"/>
-        </group>
-        <group>
-          <field name="description"
-                 required="breakdown_reason == 'other'"/>
-        </group>
+          <group>
+            <field name="description"
+                   required="breakdown_reason == 'other'"
+                   placeholder="Descricao obrigatoria quando motivo = Outro..."/>
+          </group>
+        </div>
         <footer>
           <button name="action_confirm"
                   string="Registar Quebra"
                   type="object"
-                  class="btn-danger"/>
+                  class="btn-danger sc-hh-btn danger"
+                  style="min-width:200px"/>
           <button string="Cancelar"
-                  class="btn-secondary"
-                  special="cancel"/>
+                  class="btn-secondary" special="cancel"/>
         </footer>
       </form>
     </field>

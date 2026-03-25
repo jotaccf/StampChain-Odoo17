@@ -7,10 +7,13 @@
       <tree>
         <field name="name"/>
         <field name="warehouse_id"/>
-        <field name="wisedat_warehouse_code"/>
-        <field name="warehouse_type"/>
+        <field name="wisedat_warehouse_code" class="font-monospace fw-bold"/>
+        <field name="warehouse_type" widget="badge"
+               decoration-warning="warehouse_type == 'fiscal_warehouse'"
+               decoration-success="warehouse_type == 'main_warehouse'"/>
         <field name="requires_edic"/>
         <field name="destination_warehouse_id"/>
+        <field name="location_count" string="Localizacoes"/>
       </tree>
     </field>
   </record>
@@ -20,21 +23,37 @@
     <field name="model">tobacco.warehouse.config</field>
     <field name="arch" type="xml">
       <form>
+        <header>
+          <button name="action_open_layout_wizard"
+                  string="Configurar Layout"
+                  type="object"
+                  class="btn-primary sc-btn-handheld"
+                  icon="fa-th"/>
+        </header>
         <sheet>
           <group>
-            <group>
+            <group string="Mapeamento">
               <field name="name"/>
               <field name="warehouse_id"/>
-              <field name="wisedat_warehouse_code"/>
-              <field name="warehouse_type"/>
+              <field name="wisedat_warehouse_code" class="font-monospace"/>
+              <field name="warehouse_type" widget="badge"/>
             </group>
-            <group>
-              <field name="is_fiscal_warehouse"/>
+            <group string="Configuracao">
+              <field name="is_fiscal_warehouse" readonly="1"/>
               <field name="requires_edic"/>
               <field name="destination_warehouse_id"/>
               <field name="wisedat_config_id"/>
               <field name="active"/>
             </group>
+          </group>
+          <group string="Layout Fisico" col="4">
+            <field name="num_corridors" readonly="1"/>
+            <field name="num_shelves" readonly="1"/>
+            <field name="num_levels" readonly="1"/>
+            <field name="num_positions" readonly="1"/>
+            <field name="location_count" readonly="1"/>
+            <field name="last_layout_date" readonly="1"/>
+            <field name="last_layout_user" readonly="1"/>
           </group>
         </sheet>
       </form>

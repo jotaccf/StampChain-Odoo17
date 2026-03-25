@@ -7,25 +7,40 @@
       <form>
         <group>
           <group>
-            <field name="zone_id"/>
-            <field name="current_value"/>
+            <field name="zone_id" readonly="1"/>
+            <div class="sc-metric-card" style="margin:8px 0">
+              <div class="sc-metric-label">Valor Actual</div>
+              <div class="sc-metric-value">
+                <field name="current_value" readonly="1" widget="integer" nolabel="1"/>
+              </div>
+            </div>
           </group>
           <group>
-            <field name="new_value"/>
+            <div class="sc-metric-card sc-metric-ok" style="margin:8px 0">
+              <div class="sc-metric-label">Novo Valor</div>
+              <div class="sc-metric-value">
+                <field name="new_value" widget="integer" nolabel="1"/>
+              </div>
+            </div>
           </group>
         </group>
         <group>
           <field name="change_reason"
                  placeholder="Indique o motivo da alteracao (obrigatorio)..."/>
         </group>
+        <div class="sc-hh-feedback warn" style="margin:8px 0">
+          <div class="sc-hh-feedback-sub">
+            A alteracao fica registada no historico de auditoria.
+          </div>
+        </div>
         <footer>
           <button name="action_confirm"
                   string="Confirmar Alteracao"
                   type="object"
-                  class="btn-primary"/>
+                  class="btn-primary sc-hh-btn primary"
+                  style="min-width:200px"/>
           <button string="Cancelar"
-                  class="btn-secondary"
-                  special="cancel"/>
+                  class="btn-secondary" special="cancel"/>
         </footer>
       </form>
     </field>

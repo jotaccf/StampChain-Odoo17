@@ -9,7 +9,7 @@
           <button name="action_test_connection"
                   string="Testar Ligacao"
                   type="object"
-                  class="btn-primary"/>
+                  class="btn-primary sc-btn-handheld"/>
           <button name="action_full_sync"
                   string="Sync Completa"
                   type="object"

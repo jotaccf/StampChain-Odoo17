@@ -5,28 +5,36 @@
     <field name="model">tobacco.incm.reception.wizard</field>
     <field name="arch" type="xml">
       <form>
-        <group>
+        <div class="sc-hh-topbar green">
+          <div>
+            <div class="sc-hh-topbar-title">Receber Lote INCM</div>
+            <div class="sc-hh-topbar-sub">Wizard antigo (formato longo)</div>
+          </div>
+        </div>
+        <div class="sc-hh-body">
           <group>
-            <field name="incm_ref"/>
-            <field name="zone_id"/>
-            <field name="reception_date"/>
+            <group>
+              <field name="incm_ref"/>
+              <field name="zone_id"/>
+              <field name="reception_date"/>
+            </group>
+            <group>
+              <field name="qty_lots"/>
+              <field name="qty_total" readonly="1"/>
+            </group>
           </group>
           <group>
-            <field name="qty_lots"/>
-            <field name="qty_total"/>
+            <field name="notes" placeholder="Observacoes..."/>
           </group>
-        </group>
-        <group>
-          <field name="notes"/>
-        </group>
+        </div>
         <footer>
           <button name="action_confirm"
                   string="Confirmar Recepcao"
                   type="object"
-                  class="btn-primary"/>
+                  class="btn-primary sc-hh-btn primary"
+                  style="min-width:200px"/>
           <button string="Cancelar"
-                  class="btn-secondary"
-                  special="cancel"/>
+                  class="btn-secondary" special="cancel"/>
         </footer>
       </form>
     </field>

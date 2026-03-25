@@ -8,14 +8,21 @@
         <group>
           <field name="wisedat_config_id"/>
           <field name="ef_warehouse_id"/>
-          <field name="create_ef"/>
+          <field name="create_ef" widget="boolean_toggle"/>
           <field name="a1_warehouse_id"/>
-          <field name="create_a1"/>
+          <field name="create_a1" widget="boolean_toggle"/>
         </group>
+        <div class="sc-hh-feedback info" style="margin:8px 0">
+          <div class="sc-hh-feedback-sub">
+            Cria os armazens EF e A1 se nao existirem e
+            configura o mapeamento Wisedat automaticamente.
+          </div>
+        </div>
         <footer>
           <button name="action_setup"
                   string="Configurar Armazens EF e A1"
-                  type="object" class="btn-primary"/>
+                  type="object" class="btn-primary sc-hh-btn primary"
+                  style="min-width:200px"/>
           <button string="Cancelar"
                   class="btn-secondary" special="cancel"/>
         </footer>

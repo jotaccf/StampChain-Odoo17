@@ -5,16 +5,27 @@
     <field name="model">tobacco.at.code.wizard</field>
     <field name="arch" type="xml">
       <form>
-        <group>
-          <field name="fiscal_document_id"/>
-          <field name="document_type"/>
-          <field name="at_code"/>
-          <field name="confirmation"/>
-        </group>
+        <div class="sc-hh-topbar green">
+          <div>
+            <div class="sc-hh-topbar-title">Inserir Codigo AT</div>
+            <div class="sc-hh-topbar-sub">Codigo gerado pelo portal AT</div>
+          </div>
+        </div>
+        <div class="sc-hh-body">
+          <group>
+            <field name="fiscal_document_id" readonly="1"/>
+            <field name="document_type" readonly="1"/>
+          </group>
+          <div class="sc-hh-label">Codigo AT</div>
+          <field name="at_code" class="sc-hh-input" placeholder="Codigo AT..." nolabel="1"/>
+          <field name="confirmation" widget="boolean_toggle"
+                 string="Confirmo que o codigo foi gerado pelo portal AT"/>
+        </div>
         <footer>
           <button name="action_confirm"
                   string="Confirmar e Aprovar"
-                  type="object" class="btn-primary"/>
+                  type="object" class="btn-primary sc-hh-btn primary"
+                  style="min-width:200px"/>
           <button string="Cancelar"
                   class="btn-secondary" special="cancel"/>
         </footer>
