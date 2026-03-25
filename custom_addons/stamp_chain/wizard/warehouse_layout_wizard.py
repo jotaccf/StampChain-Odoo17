@@ -18,7 +18,6 @@ class WarehouseLayoutWizard(models.TransientModel):
         'stock.warehouse',
         string='Armazem',
         required=True,
-        readonly=True,
     )
     num_corridors = fields.Integer(
         string='Numero de Corredores',
@@ -58,6 +57,33 @@ class WarehouseLayoutWizard(models.TransientModel):
         compute='_compute_existing',
         store=False,
     )
+
+    @api.onchange('warehouse_id')
+    def _onchange_warehouse_id(self):
+        """Carrega defaults do warehouse_config
+        quando o operador selecciona armazem."""
+        if not self.warehouse_id:
+            return
+        config = self.env[
+            'tobacco.warehouse.config'
+        ].search([
+            ('warehouse_id', '=',
+             self.warehouse_id.id),
+        ], limit=1)
+        if config:
+            self.warehouse_config_id = config.id
+            self.num_corridors = (
+                config.num_corridors or 2
+            )
+            self.num_shelves = (
+                config.num_shelves or 4
+            )
+            self.num_levels = (
+                config.num_levels or 3
+            )
+            self.num_positions = (
+                config.num_positions or 2
+            )
 
     @api.constrains(
         'num_corridors', 'num_shelves',

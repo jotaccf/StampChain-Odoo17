@@ -15,7 +15,9 @@
         <div class="sc-hh-body">
           <group>
             <group string="Armazem">
-              <field name="warehouse_id" readonly="1"/>
+              <field name="warehouse_id"
+                     readonly="warehouse_config_id"
+                     domain="[('code', 'in', ['EF', 'A1'])]"/>
               <field name="existing_count" readonly="1"
                      string="Localizacoes existentes"/>
             </group>
