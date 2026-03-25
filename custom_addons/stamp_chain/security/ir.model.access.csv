@@ -48,3 +48,12 @@ access_at_code_wizard_production,tobacco.at.code.wizard.production,model_tobacco
 access_at_code_wizard_manager,tobacco.at.code.wizard.manager,model_tobacco_at_code_wizard,stamp_chain.group_stamp_manager,1,1,1,1
 access_at_code_wizard_fiscal,tobacco.at.code.wizard.fiscal,model_tobacco_at_code_wizard,stamp_chain.group_stamp_fiscal,1,1,1,1
 access_wh_setup_wizard_manager,tobacco.warehouse.setup.wizard.manager,model_tobacco_warehouse_setup_wizard,stamp_chain.group_stamp_manager,1,1,1,1
+access_ocr_wizard_user,tobacco.incm.ocr.reception.wizard.user,model_tobacco_incm_ocr_reception_wizard,stamp_chain.group_stamp_user,1,1,1,1
+access_ocr_wizard_production,tobacco.incm.ocr.reception.wizard.production,model_tobacco_incm_ocr_reception_wizard,stamp_chain.group_stamp_production,1,1,1,1
+access_ocr_wizard_manager,tobacco.incm.ocr.reception.wizard.manager,model_tobacco_incm_ocr_reception_wizard,stamp_chain.group_stamp_manager,1,1,1,1
+access_prod_start_user,tobacco.production.start.wizard.user,model_tobacco_production_start_wizard,stamp_chain.group_stamp_user,1,1,1,1
+access_prod_start_production,tobacco.production.start.wizard.production,model_tobacco_production_start_wizard,stamp_chain.group_stamp_production,1,1,1,1
+access_prod_start_manager,tobacco.production.start.wizard.manager,model_tobacco_production_start_wizard,stamp_chain.group_stamp_manager,1,1,1,1
+access_prod_end_user,tobacco.production.end.wizard.user,model_tobacco_production_end_wizard,stamp_chain.group_stamp_user,1,1,1,1
+access_prod_end_production,tobacco.production.end.wizard.production,model_tobacco_production_end_wizard,stamp_chain.group_stamp_production,1,1,1,1
+access_prod_end_manager,tobacco.production.end.wizard.manager,model_tobacco_production_end_wizard,stamp_chain.group_stamp_manager,1,1,1,1

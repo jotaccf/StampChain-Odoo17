@@ -82,6 +82,51 @@ class StampLot(models.Model):
         'stock.warehouse',
         string='Armazem Actual',
     )
+    # — Campos OCR (imutaveis apos recepcao R1) —
+    first_serial_code = fields.Char(
+        string='Codigo Inicial (scan)',
+        readonly=True,
+    )
+    serial_prefix = fields.Char(
+        string='Prefixo do Lote',
+        readonly=True,
+    )
+    serial_suffix_start = fields.Integer(
+        string='Sufixo Inicial (INCM)',
+        readonly=True,
+    )
+    serial_suffix_end = fields.Integer(
+        string='Sufixo Final (INCM)',
+        readonly=True,
+    )
+    # — Campo computed (R2) —
+    current_suffix_end = fields.Integer(
+        string='Ultima Disponivel (sufixo)',
+        compute='_compute_current_suffix_end',
+        store=False,
+    )
+    # — Tracking producao —
+    qty_consumed = fields.Integer(
+        string='Consumidas em Producao',
+        readonly=True,
+        default=0,
+    )
+    lot_status = fields.Selection([
+        ('reception', 'Em Armazem'),
+        ('in_machine', 'Em Producao'),
+        ('partial', 'Parcialmente Usado'),
+        ('exhausted', 'Esgotado'),
+    ], string='Estado Producao',
+       default='reception',
+       tracking=True,
+    )
+    production_lot_ids = fields.Many2many(
+        'mrp.production',
+        'stamp_lot_production_rel',
+        'lot_id',
+        'production_id',
+        string='Ordens de Producao',
+    )
     state = fields.Selection([
         ('draft', 'Rascunho'),
         ('received', 'Recebido'),
@@ -142,3 +187,28 @@ class StampLot(models.Model):
             limit=1,
         )
         return (last.fifo_sequence + 1) if last else 1
+
+    @api.depends(
+        'serial_ids',
+        'serial_ids.state',
+        'serial_ids.serial_number')
+    def _compute_current_suffix_end(self):
+        for lot in self:
+            available = lot.serial_ids.filtered(
+                lambda s: s.state == 'available'
+            )
+            if not available:
+                lot.current_suffix_end = (
+                    lot.serial_suffix_start - 1
+                )
+                continue
+            suffixes = []
+            for serial in available:
+                code = serial.serial_number
+                if (len(code) == 8
+                        and code[:5].isalpha()
+                        and code[5:].isdigit()):
+                    suffixes.append(int(code[5:]))
+            lot.current_suffix_end = (
+                max(suffixes) if suffixes else 0
+            )

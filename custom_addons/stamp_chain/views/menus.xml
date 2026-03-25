@@ -60,11 +60,21 @@
             name="Operacoes"
             parent="menu_stampchain_root"
             sequence="30"/>
-  <menuitem id="menu_receber_lote"
-            name="Receber Lote INCM"
+  <menuitem id="menu_receber_lote_ocr"
+            name="Receber Lote INCM (OCR)"
             parent="menu_operacoes"
-            action="action_incm_reception_wizard"
+            action="action_incm_ocr_reception_wizard"
             sequence="1"/>
+  <menuitem id="menu_production_start"
+            name="Iniciar Estampilhagem"
+            parent="menu_operacoes"
+            action="action_production_start_wizard"
+            sequence="2"/>
+  <menuitem id="menu_production_end"
+            name="Registar Fim de Producao"
+            parent="menu_operacoes"
+            action="action_production_end_wizard"
+            sequence="3"/>
 
   <!-- Documentos Fiscais -->
   <menuitem id="menu_fiscal_docs"
@@ -113,4 +123,9 @@
             parent="menu_config"
             action="action_warehouse_setup_wizard"
             sequence="4"/>
+  <menuitem id="menu_receber_lote_legacy"
+            name="Recepcao Manual (legacy)"
+            parent="menu_config"
+            action="action_incm_reception_wizard"
+            sequence="10"/>
 </odoo>

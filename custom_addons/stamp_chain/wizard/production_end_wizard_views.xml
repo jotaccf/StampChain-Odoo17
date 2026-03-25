@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="view_production_end_wizard_form" model="ir.ui.view">
+    <field name="name">tobacco.production.end.wizard.form</field>
+    <field name="model">tobacco.production.end.wizard</field>
+    <field name="arch" type="xml">
+      <form>
+        <group>
+          <field name="production_id" readonly="1"/>
+        </group>
+        <notebook>
+          <page string="Lote 1">
+            <group>
+              <field name="lot1_id" readonly="1"/>
+              <field name="lot1_exhausted"/>
+              <field name="lot1_last_scan" placeholder="Ex: ZZAYC187"
+                     invisible="lot1_exhausted"/>
+              <field name="lot1_scan_confirmed"
+                     invisible="lot1_exhausted"/>
+              <field name="lot1_consumed_stored" readonly="1"/>
+              <field name="lot1_remaining_stored" readonly="1"/>
+            </group>
+          </page>
+          <page string="Lote 2">
+            <group>
+              <field name="lot2_id" readonly="1"/>
+              <field name="lot2_exhausted"/>
+              <field name="lot2_last_scan" placeholder="Ex: ZZAYF200"
+                     invisible="lot2_exhausted"/>
+              <field name="lot2_scan_confirmed"
+                     invisible="lot2_exhausted"/>
+              <field name="lot2_consumed_stored" readonly="1"/>
+              <field name="lot2_remaining_stored" readonly="1"/>
+            </group>
+          </page>
+          <page string="Resumo">
+            <group>
+              <field name="total_consumed_stored" readonly="1"/>
+            </group>
+          </page>
+        </notebook>
+        <div class="alert alert-info">
+          Picar a estampilha do topo do que sobrou. Se esgotado, marcar a checkbox.
+        </div>
+        <footer>
+          <button name="action_confirm" string="Registar Fim de Producao"
+                  type="object" class="btn-primary"/>
+          <button string="Cancelar" class="btn-secondary" special="cancel"/>
+        </footer>
+      </form>
+    </field>
+  </record>
+  <record id="action_production_end_wizard" model="ir.actions.act_window">
+    <field name="name">Registar Fim de Producao</field>
+    <field name="res_model">tobacco.production.end.wizard</field>
+    <field name="view_mode">form</field>
+    <field name="target">new</field>
+  </record>
+</odoo>

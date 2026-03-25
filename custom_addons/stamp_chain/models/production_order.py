@@ -17,6 +17,14 @@ class MrpProduction(models.Model):
         'tobacco.stamp.serial',
         string='Estampilhas Reservadas',
     )
+    # M2M inverso em stamp_lot (lot_id, production_id)
+    stamp_lot_ids = fields.Many2many(
+        'tobacco.stamp.lot',
+        'stamp_lot_production_rel',
+        'production_id',
+        'lot_id',
+        string='Lotes INCM em Producao',
+    )
     stamp_qty_planned = fields.Integer(
         string='Estampilhas Planeadas',
         compute='_compute_stamp_qty_planned',

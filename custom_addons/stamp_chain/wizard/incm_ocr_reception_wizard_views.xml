@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="view_incm_ocr_reception_wizard_form" model="ir.ui.view">
+    <field name="name">tobacco.incm.ocr.reception.wizard.form</field>
+    <field name="model">tobacco.incm.ocr.reception.wizard</field>
+    <field name="arch" type="xml">
+      <form>
+        <group>
+          <group>
+            <field name="zone_id"/>
+            <field name="reception_date"/>
+            <field name="incm_ref"/>
+          </group>
+          <group>
+            <field name="first_serial_ocr" placeholder="Ex: ZZAYC000"/>
+            <field name="ocr_confirmed"/>
+            <field name="has_valid_code" invisible="1"/>
+          </group>
+        </group>
+        <group invisible="not has_valid_code">
+          <group string="Previa Extrapolacao">
+            <field name="serial_prefix" readonly="1"/>
+            <field name="last_serial_preview" readonly="1"/>
+            <field name="qty_total" readonly="1"/>
+          </group>
+        </group>
+        <div class="alert alert-info" invisible="not has_valid_code">
+          500 seriais serao gerados automaticamente por extrapolacao.
+        </div>
+        <footer>
+          <button name="action_confirm" string="Confirmar Recepcao"
+                  type="object" class="btn-primary"/>
+          <button string="Cancelar" class="btn-secondary" special="cancel"/>
+        </footer>
+      </form>
+    </field>
+  </record>
+  <record id="action_incm_ocr_reception_wizard" model="ir.actions.act_window">
+    <field name="name">Receber Lote INCM (OCR)</field>
+    <field name="res_model">tobacco.incm.ocr.reception.wizard</field>
+    <field name="view_mode">form</field>
+    <field name="target">new</field>
+  </record>
+</odoo>

@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+<t t-name="stamp_chain.StampOcrWidget" owl="1">
+  <div class="stamp-ocr-widget">
+    <t t-if="state.mode === 'idle'">
+      <div class="d-flex gap-2 align-items-center">
+        <button class="btn btn-primary btn-sm" t-on-click="startCamera">
+          <i class="fa fa-camera me-1"/>Fotografar
+        </button>
+        <button class="btn btn-secondary btn-sm" t-on-click="useManual">
+          <i class="fa fa-keyboard-o me-1"/>Manual
+        </button>
+        <t t-if="props.confirmedCode">
+          <span class="badge bg-success ms-2 font-monospace fs-6">
+            <t t-esc="props.confirmedCode"/>
+          </span>
+          <button class="btn btn-link btn-sm" t-on-click="reset">Alterar</button>
+        </t>
+      </div>
+    </t>
+    <t t-if="state.mode === 'camera'">
+      <div class="position-relative mb-2">
+        <video t-ref="video" playsinline style="width:100%;max-height:280px;object-fit:cover;border-radius:8px;background:#000"/>
+        <canvas t-ref="canvas" style="display:none"/>
+        <div class="position-absolute top-50 start-50 translate-middle border border-warning border-3 rounded" style="width:200px;height:60px;pointer-events:none"/>
+      </div>
+      <div class="d-flex gap-2">
+        <button class="btn btn-success flex-grow-1" t-att-disabled="!state.videoReady" t-on-click="captureAndOcr">
+          <i class="fa fa-camera me-1"/>Capturar
+        </button>
+        <button class="btn btn-secondary" t-on-click="useManual">Manual</button>
+      </div>
+    </t>
+    <t t-if="state.mode === 'processing'">
+      <div class="alert alert-info py-2">
+        <i class="fa fa-spinner fa-spin me-2"/>A processar OCR...
+      </div>
+    </t>
+    <t t-if="state.mode === 'confirm'">
+      <div class="alert alert-warning py-2">
+        <div class="d-flex align-items-center gap-3">
+          <span class="font-monospace fs-4 fw-bold"><t t-esc="state.rawCode"/></span>
+          <small class="text-muted" t-if="state.ocrConfidence &lt; 100">OCR: <t t-esc="state.ocrConfidence"/>%</small>
+        </div>
+        <div class="mt-2 d-flex gap-2">
+          <button class="btn btn-success btn-sm" t-on-click="confirmCode"><i class="fa fa-check me-1"/>Correcto</button>
+          <button class="btn btn-danger btn-sm" t-on-click="rejectCode"><i class="fa fa-times me-1"/>Errado</button>
+        </div>
+      </div>
+    </t>
+    <t t-if="state.mode === 'manual'">
+      <div class="input-group input-group-sm">
+        <input type="text" class="form-control font-monospace text-uppercase" placeholder="Ex: ZZAYC000" maxlength="8" t-on-input="onManualInput" t-att-value="state.rawCode"/>
+        <button class="btn btn-primary" t-on-click="submitManual">OK</button>
+      </div>
+      <small class="text-muted">5 letras + 3 digitos (ex: ZZAYC000)</small>
+    </t>
+    <t t-if="state.mode === 'error'">
+      <div class="alert alert-danger py-2 small">
+        <i class="fa fa-exclamation-circle me-1"/><t t-esc="state.errorMsg"/>
+      </div>
+      <button class="btn btn-secondary btn-sm" t-on-click="useManual">Introduzir manualmente</button>
+    </t>
+    <t t-if="state.errorMsg and state.mode === 'manual'">
+      <div class="alert alert-danger py-1 small mt-1"><t t-esc="state.errorMsg"/></div>
+    </t>
+  </div>
+</t>
+</templates>
