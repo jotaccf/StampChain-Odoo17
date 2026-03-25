@@ -21,6 +21,8 @@
               <field name="name"/>
               <field name="api_url"/>
               <field name="api_key" password="True"/>
+              <field name="api_username"/>
+              <field name="api_password" password="True"/>
               <field name="company_id"/>
             </group>
             <group string="Sincronizacao">
