@@ -12,7 +12,7 @@ services:
       - stampchain_net
 
   odoo:
-    image: odoo:17.0
+    build: .
     restart: unless-stopped
     depends_on:
       - db
