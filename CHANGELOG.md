@@ -7,6 +7,41 @@ Versioning: [Semantic Versioning](https://semver.org)
 
 ---
 
+## [17.0.2.0.0] — 2026-03-25
+
+### Added
+- Guided picking for Android handheld (OWL component)
+  3-step flow: location scan, product scan, qty confirm
+  vibration feedback on correct/wrong scan
+- Warehouse layout wizard: configurable corridors,
+  shelves, levels, positions with preview
+  saves config to tobacco.warehouse.config
+- Discrepancy audit system: tobacco.stamp.audit (immutable),
+  tobacco.stamp.found (dual validation), physical count
+  with 24h override, auto-detection after production
+- OCR reception wizard with INCM serial extrapolation
+- Production start/end wizards with consumption calculation
+- QR label report for warehouse locations (Zebra ZD421)
+- StampChain design system (sc-* CSS classes)
+  zone cards, metric cards, type pills, state badges
+  handheld layout, scroll fix desktop+mobile+iOS
+- Wisedat RSA authentication (2-step, JWT cached)
+- Self-contained repository: OCA modules + Dockerfile
+
+### Changed
+- All views use sc- design system (UI homogeneity)
+- Wisedat endpoints: /products, /movementsofgoods, /company
+- Serial format: INCM real (ZZAYC000) replaces old format
+- stock.move.line: quantity field (Odoo 17, not reserved_qty)
+- Dashboard OWL: methods bound in setup(), no useInterval
+
+### Fixed
+- iOS/desktop scroll in OWL client actions (sc-scroll-root)
+- OWL template playsinline attribute (playsinline="playsinline")
+- decoration-muted/secondary invalid in Odoo 17 RNG
+- button_validate preserved (str_replace, never rewrite)
+- Wisedat credentials visible to group_stamp_manager
+
 ## [17.0.1.2.0] — 2026-03-25
 
 ### Added

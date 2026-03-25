@@ -82,8 +82,8 @@ Fiscal warehouse management, eDIC/e-DA, Wisedat integration.
 - [x] EF direct shipment blocked
 - [x] deploy.sh production script
 - [x] GitHub Actions CI/CD pipeline
-- [ ] Barcode labels generation (warehouse locations QR codes)
-- [ ] Wisedat real API endpoint validation (awaiting credentials)
+- [x] Barcode labels generation (warehouse locations QR codes)
+- [x] Wisedat RSA authentication (tested against v02.25.1216.3)
 
 ---
 
@@ -104,7 +104,30 @@ PDF reports, operator documentation, acceptance tests.
 
 ---
 
-### v17.0.2.0.0 — XML Fiscal
+### v17.0.2.0.0 — Production Ready
+
+**Released:** March 2026 | **Status:** Released
+
+Full operational system: picking handheld, discrepancy audit,
+OCR production wizards, complete UI redesign, Wisedat RSA.
+
+- [x] Guided picking handheld (OWL 3-step: location/product/qty)
+- [x] Warehouse layout wizard (configurable, saves to config)
+- [x] QR label report for locations (Zebra ZD421)
+- [x] Discrepancy audit system (immutable, auto-detection)
+- [x] Found stamp workflow (dual validation)
+- [x] Physical count with 24h override
+- [x] OCR reception wizard (INCM serial extrapolation)
+- [x] Production start/end wizards (consumption calculation)
+- [x] StampChain design system (sc-* CSS, all views)
+- [x] Wisedat RSA 2-step authentication (JWT cached)
+- [x] Self-contained repo (OCA modules + Dockerfile)
+- [x] 103 unit tests passing
+- [ ] Wisedat real API validation (awaiting production credentials)
+
+---
+
+### v17.0.3.0.0 — XML Fiscal
 
 **Target:** Q3 2026 | **Status:** Planned
 
@@ -121,7 +144,7 @@ Fiscal compliance — XML export for AT/DGAIEC.
 
 ---
 
-### v17.0.3.0.0 — Extended IEC
+### v17.0.4.0.0 — Extended IEC
 
 **Target:** Q4 2026 | **Status:** Planned
 
