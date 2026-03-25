@@ -10,10 +10,16 @@ class StampDashboard extends Component {
         this.orm = useService("orm");
         this.action = useService("action");
 
+        // Bind methods for OWL template calls
+        this.openZone = this.openZone.bind(this);
+        this.openAction = this.openAction.bind(this);
+        this.refreshData = this.refreshData.bind(this);
+
         this.state = useState({
             zones: [],
             recentMovements: [],
             loading: true,
+            lastUpdate: '',
         });
 
         onWillStart(async () => {
@@ -34,6 +40,7 @@ class StampDashboard extends Component {
                 "discrepancy", "discrepancy_active",
                 "discrepancy_direction",
                 "audit_open_count",
+                "stock_theoretical", "stock_real",
             ]
         );
         const movements = await this.orm.searchRead(
@@ -46,54 +53,77 @@ class StampDashboard extends Component {
             ],
             { limit: 10, order: "date desc" }
         );
+        zones.sort((a, b) => {
+            const urgA = a.discrepancy_active ? 2 : a.alert_active ? 1 : 0;
+            const urgB = b.discrepancy_active ? 2 : b.alert_active ? 1 : 0;
+            return urgB - urgA;
+        });
+        const now = new Date();
+        const time = now.getHours().toString().padStart(2, '0')
+            + ':' + now.getMinutes().toString().padStart(2, '0');
         Object.assign(this.state, {
             zones,
             recentMovements: movements,
             loading: false,
+            lastUpdate: time,
         });
     }
 
     getZoneCardClass(zone) {
-        if (zone.balance === 0) return "stamp-zone-card danger";
-        if (zone.alert_active) return "stamp-zone-card warning";
-        return "stamp-zone-card ok";
+        if (zone.discrepancy_active) {
+            return zone.discrepancy > 0 ? 'sc-zone-card disc-miss' : 'sc-zone-card disc-plus';
+        }
+        return zone.alert_active ? 'sc-zone-card warn' : 'sc-zone-card ok';
     }
 
-    getMoveTypeLabel(moveType) {
-        const labels = {
-            in: "Entrada",
-            out: "Saida",
-            breakdown: "Quebra",
-            recovery: "Recuperacao",
-            adjust: "Ajuste",
-        };
-        return labels[moveType] || moveType;
+    getBalanceClass(zone) {
+        if (zone.discrepancy_active && zone.discrepancy > 0) return 'sc-zone-balance err';
+        return zone.alert_active ? 'sc-zone-balance warn' : 'sc-zone-balance ok';
     }
 
-    getMoveTypeIcon(moveType) {
-        const icons = {
-            in: "fa-arrow-down",
-            out: "fa-arrow-up",
-            breakdown: "fa-times-circle",
-            recovery: "fa-check-circle",
-            adjust: "fa-sliders",
-        };
-        return icons[moveType] || "fa-circle";
-    }
-
-    getDiscrepancyClass(zone) {
-        if (!zone.discrepancy_active) return "";
-        return zone.discrepancy > 0
-            ? "stamp-disc-missing"
-            : "stamp-disc-surplus";
-    }
-
-    getDiscrepancyLabel(zone) {
-        if (!zone.discrepancy_active) return "";
+    getDiscLabel(zone) {
+        if (!zone.discrepancy_active) return '';
         const abs = Math.abs(zone.discrepancy);
-        return zone.discrepancy > 0
-            ? `Faltam ${abs}`
-            : `Sobram ${abs}`;
+        return zone.discrepancy > 0 ? `Faltam ${abs}` : `Sobram ${abs}`;
+    }
+
+    getDiscClass(zone) {
+        if (!zone.discrepancy_active) return '';
+        return zone.discrepancy > 0 ? 'sc-inline-alert disc-miss' : 'sc-inline-alert disc-plus';
+    }
+
+    getMovTypeClass(moveType) {
+        const map = {
+            in: 'sc-type-pill sc-type-in', out: 'sc-type-pill sc-type-out',
+            breakdown: 'sc-type-pill sc-type-brk', recovery: 'sc-type-pill sc-type-rec',
+            recovery_found: 'sc-type-pill sc-type-found', adjust: 'sc-type-pill sc-type-brk',
+        };
+        return map[moveType] || 'sc-type-pill';
+    }
+
+    getMovTypeLabel(moveType) {
+        const map = {
+            in: 'Entrada', out: 'Saida', breakdown: 'Quebra',
+            recovery: 'Recuperacao', recovery_found: 'Encontrada', adjust: 'Ajuste',
+        };
+        return map[moveType] || moveType;
+    }
+
+    getQtyClass(moveType) {
+        if (['in', 'recovery', 'recovery_found'].includes(moveType)) return 'sc-qty-pos';
+        return moveType === 'breakdown' ? 'sc-qty-warn' : 'sc-qty-neg';
+    }
+
+    getQtyPrefix(moveType) {
+        return ['in', 'recovery', 'recovery_found'].includes(moveType) ? '+' : '-';
+    }
+
+    getAlertZones() {
+        return this.state.zones.filter(z => z.discrepancy_active);
+    }
+
+    getMinAlertZones() {
+        return this.state.zones.filter(z => z.alert_active && !z.discrepancy_active);
     }
 
     async openZone(zoneId) {
@@ -105,13 +135,11 @@ class StampDashboard extends Component {
         });
     }
 
-    async openReception() {
-        await this.action.doAction(
-            "stamp_chain.action_incm_reception_wizard"
-        );
+    async openAction(actionXmlId) {
+        await this.action.doAction(actionXmlId);
     }
 
-    async refresh() {
+    async refreshData() {
         this.state.loading = true;
         await this.loadData();
     }
