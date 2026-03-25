@@ -22,7 +22,7 @@
             <span class="sc-badge sc-badge-warn"><t t-esc="mz.code"/> minimo</span>
           </t>
         </t>
-        <button style="background:none;border:0.5px solid var(--color-border-secondary,#ced4da);border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer;color:var(--color-text-secondary,#6c757d)" t-on-click="refreshData">Actualizar</button>
+        <button style="background:none;border:0.5px solid var(--color-border-secondary,#ced4da);border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer;color:var(--color-text-secondary,#6c757d)" t-on-click="() => refreshData()">Actualizar</button>
       </div>
     </div>
 
