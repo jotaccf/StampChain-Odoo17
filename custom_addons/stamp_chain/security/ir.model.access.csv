@@ -38,3 +38,13 @@ access_zone_history_production,tobacco.stamp.zone.history.production,model_tobac
 access_zone_history_manager,tobacco.stamp.zone.history.manager,model_tobacco_stamp_zone_history,stamp_chain.group_stamp_manager,1,1,1,0
 access_zone_history_fiscal,tobacco.stamp.zone.history.fiscal,model_tobacco_stamp_zone_history,stamp_chain.group_stamp_fiscal,1,0,0,0
 access_min_stock_wizard_manager,tobacco.min.stock.wizard.manager,model_tobacco_min_stock_wizard,stamp_chain.group_stamp_manager,1,1,1,1
+access_fiscal_doc_user,tobacco.fiscal.document.user,model_tobacco_fiscal_document,stamp_chain.group_stamp_user,1,0,0,0
+access_fiscal_doc_production,tobacco.fiscal.document.production,model_tobacco_fiscal_document,stamp_chain.group_stamp_production,1,1,1,0
+access_fiscal_doc_manager,tobacco.fiscal.document.manager,model_tobacco_fiscal_document,stamp_chain.group_stamp_manager,1,1,1,1
+access_fiscal_doc_fiscal,tobacco.fiscal.document.fiscal,model_tobacco_fiscal_document,stamp_chain.group_stamp_fiscal,1,1,1,0
+access_wh_config_manager,tobacco.warehouse.config.manager,model_tobacco_warehouse_config,stamp_chain.group_stamp_manager,1,1,1,1
+access_wh_config_fiscal,tobacco.warehouse.config.fiscal,model_tobacco_warehouse_config,stamp_chain.group_stamp_fiscal,1,0,0,0
+access_at_code_wizard_production,tobacco.at.code.wizard.production,model_tobacco_at_code_wizard,stamp_chain.group_stamp_production,1,1,1,1
+access_at_code_wizard_manager,tobacco.at.code.wizard.manager,model_tobacco_at_code_wizard,stamp_chain.group_stamp_manager,1,1,1,1
+access_at_code_wizard_fiscal,tobacco.at.code.wizard.fiscal,model_tobacco_at_code_wizard,stamp_chain.group_stamp_fiscal,1,1,1,1
+access_wh_setup_wizard_manager,tobacco.warehouse.setup.wizard.manager,model_tobacco_warehouse_setup_wizard,stamp_chain.group_stamp_manager,1,1,1,1

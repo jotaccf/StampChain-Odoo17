@@ -25,5 +25,11 @@
       <field name="prefix">SC/XML/%(year)s/</field>
       <field name="padding">5</field>
     </record>
+    <record id="seq_fiscal_document" model="ir.sequence">
+      <field name="name">Documento Fiscal IEC</field>
+      <field name="code">tobacco.fiscal.document</field>
+      <field name="prefix">SC/FIS/%(year)s/</field>
+      <field name="padding">5</field>
+    </record>
   </data>
 </odoo>

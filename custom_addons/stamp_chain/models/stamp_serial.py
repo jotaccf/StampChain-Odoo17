@@ -78,6 +78,16 @@ class StampSerial(models.Model):
         string='Aprovado por',
         readonly=True,
     )
+    edic_ref = fields.Char(
+        string='Referencia eDIC',
+    )
+    eda_ref = fields.Char(
+        string='Referencia e-DA',
+    )
+    current_warehouse_id = fields.Many2one(
+        'stock.warehouse',
+        string='Armazem Actual',
+    )
 
     _sql_constraints = [
         (

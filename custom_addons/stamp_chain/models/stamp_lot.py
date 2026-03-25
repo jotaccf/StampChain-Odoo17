@@ -61,6 +61,27 @@ class StampLot(models.Model):
         'lot_id',
         string='Numeros de Serie',
     )
+    edic_ref = fields.Char(
+        string='Referencia eDIC (Codigo AT)',
+        tracking=True,
+    )
+    eda_ref = fields.Char(
+        string='Referencia e-DA (Codigo AT)',
+        tracking=True,
+    )
+    # Many2many inverso definido em fiscal_document.py
+    # Tabela: fiscal_doc_lot_rel
+    # Esta coluna: lot_id — outra: doc_id
+    fiscal_document_ids = fields.Many2many(
+        'tobacco.fiscal.document',
+        'fiscal_doc_lot_rel',
+        'lot_id', 'doc_id',
+        string='Documentos Fiscais',
+    )
+    warehouse_id = fields.Many2one(
+        'stock.warehouse',
+        string='Armazem Actual',
+    )
     state = fields.Selection([
         ('draft', 'Rascunho'),
         ('received', 'Recebido'),

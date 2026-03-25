@@ -66,6 +66,27 @@
             action="action_incm_reception_wizard"
             sequence="1"/>
 
+  <!-- Documentos Fiscais -->
+  <menuitem id="menu_fiscal_docs"
+            name="Documentos Fiscais"
+            parent="menu_stampchain_root"
+            sequence="40"/>
+  <menuitem id="menu_edic"
+            name="eDIC — Introducao no Consumo"
+            parent="menu_fiscal_docs"
+            action="action_fiscal_document_edic"
+            sequence="1"/>
+  <menuitem id="menu_eda"
+            name="e-DA — Movimento entre Entrepostos"
+            parent="menu_fiscal_docs"
+            action="action_fiscal_document_eda"
+            sequence="2"/>
+  <menuitem id="menu_fiscal_all"
+            name="Todos os Documentos"
+            parent="menu_fiscal_docs"
+            action="action_fiscal_document_all"
+            sequence="3"/>
+
   <!-- Configuracoes (apenas managers) -->
   <menuitem id="menu_config"
             name="Configuracoes"
@@ -82,4 +103,14 @@
             parent="menu_config"
             action="action_wisedat_config"
             sequence="2"/>
+  <menuitem id="menu_warehouses"
+            name="Armazens EF/A1"
+            parent="menu_config"
+            action="action_warehouse_config"
+            sequence="3"/>
+  <menuitem id="menu_warehouse_setup"
+            name="Setup Inicial Armazens"
+            parent="menu_config"
+            action="action_warehouse_setup_wizard"
+            sequence="4"/>
 </odoo>

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-from odoo import models, fields
+from odoo import models, fields, api
+from odoo.exceptions import UserError
 import logging
 
 _logger = logging.getLogger(__name__)
@@ -22,13 +23,84 @@ class StockPicking(models.Model):
         string='Baixado Por',
         readonly=True,
     )
+    wisedat_doc_id = fields.Char(
+        string='ID Documento Wisedat',
+        readonly=True,
+    )
+    is_ef_to_a1_transfer = fields.Boolean(
+        string='Transferencia EF -> A1',
+        compute='_compute_is_ef_transfer',
+        store=True,
+    )
+    fiscal_document_id = fields.Many2one(
+        'tobacco.fiscal.document',
+        string='Documento Fiscal (eDIC/e-DA)',
+        readonly=True,
+    )
+
+    @api.depends(
+        'picking_type_id',
+        'picking_type_id.code',
+        'picking_type_id.warehouse_id')
+    def _compute_is_ef_transfer(self):
+        for picking in self:
+            config = self.env[
+                'tobacco.warehouse.config'
+            ].search([
+                ('warehouse_type', '=',
+                 'fiscal_warehouse'),
+            ], limit=1)
+            picking.is_ef_to_a1_transfer = (
+                picking.picking_type_id.code
+                == 'internal'
+                and bool(config)
+                and picking.picking_type_id
+                .warehouse_id.id
+                == config.warehouse_id.id
+            )
+
+    def _check_ef_shipment_block(self):
+        for picking in self:
+            if picking.picking_type_id.code != 'outgoing':
+                continue
+            ef_config = self.env[
+                'tobacco.warehouse.config'
+            ].search([
+                ('warehouse_type', '=',
+                 'fiscal_warehouse'),
+                ('warehouse_id', '=',
+                 picking.picking_type_id
+                 .warehouse_id.id),
+            ], limit=1)
+            if ef_config:
+                raise UserError(
+                    'Nao e possivel expedir '
+                    'directamente do Entreposto '
+                    'Fiscal (EF).\n'
+                    'Realize a eDIC e transfira '
+                    'para A1 primeiro.'
+                )
 
     def button_validate(self):
+        self._check_ef_shipment_block()
         res = super().button_validate()
         for picking in self:
             if (picking.picking_type_code == 'outgoing'
                     and picking.state == 'done'):
                 picking._process_stamp_usage()
+                config = self.env[
+                    'tobacco.wisedat.config'
+                ].search([], limit=1)
+                if config and config.sync_invoices:
+                    try:
+                        config._create_wisedat_transport_guide(
+                            picking.id
+                        )
+                    except Exception as e:
+                        _logger.warning(
+                            'Guia Wisedat falhou '
+                            '(nao bloqueia): %s', e
+                        )
         return res
 
     def _process_stamp_usage(self):

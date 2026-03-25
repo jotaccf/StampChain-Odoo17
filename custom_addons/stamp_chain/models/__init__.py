@@ -12,3 +12,5 @@ from . import wisedat_sync
 from . import xml_export
 from . import stamp_recovery
 from . import stamp_zone_history
+from . import fiscal_document
+from . import warehouse_config

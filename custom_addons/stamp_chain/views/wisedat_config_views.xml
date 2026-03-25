@@ -10,6 +10,10 @@
                   string="Testar Ligacao"
                   type="object"
                   class="btn-primary"/>
+          <button name="action_full_sync"
+                  string="Sync Completa"
+                  type="object"
+                  class="btn-secondary"/>
         </header>
         <sheet>
           <group>
@@ -28,6 +32,19 @@
               <field name="sync_status" widget="badge"/>
             </group>
           </group>
+          <notebook>
+            <page string="Armazens" name="warehouses">
+              <field name="warehouse_mapping_ids">
+                <tree editable="bottom">
+                  <field name="name"/>
+                  <field name="warehouse_id"/>
+                  <field name="wisedat_warehouse_code"/>
+                  <field name="warehouse_type"/>
+                  <field name="requires_edic"/>
+                </tree>
+              </field>
+            </page>
+          </notebook>
         </sheet>
       </form>
     </field>

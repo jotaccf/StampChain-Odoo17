@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="view_fiscal_document_tree" model="ir.ui.view">
+    <field name="name">tobacco.fiscal.document.tree</field>
+    <field name="model">tobacco.fiscal.document</field>
+    <field name="arch" type="xml">
+      <tree decoration-danger="state == 'cancelled'"
+            decoration-warning="state == 'at_pending'"
+            decoration-success="state == 'transferred'"
+            decoration-info="state == 'at_approved'">
+        <field name="name"/>
+        <field name="document_type"/>
+        <field name="date"/>
+        <field name="origin_warehouse_id"/>
+        <field name="destination_warehouse_id"/>
+        <field name="stamp_qty"/>
+        <field name="at_code"/>
+        <field name="state" widget="badge"/>
+      </tree>
+    </field>
+  </record>
+
+  <record id="view_fiscal_document_form" model="ir.ui.view">
+    <field name="name">tobacco.fiscal.document.form</field>
+    <field name="model">tobacco.fiscal.document</field>
+    <field name="arch" type="xml">
+      <form>
+        <header>
+          <button name="action_generate_xml"
+                  string="Gerar XML"
+                  type="object" class="btn-primary"
+                  invisible="state not in ('draft','xml_ready')"/>
+          <button name="action_send_email"
+                  string="Enviar Email AT"
+                  type="object" class="btn-primary"
+                  invisible="state != 'xml_ready'"/>
+          <button name="action_mark_at_pending"
+                  string="Confirmei Submissao"
+                  type="object" class="btn-warning"
+                  invisible="state != 'email_sent'"/>
+          <button name="action_insert_at_code"
+                  string="Inserir Codigo AT"
+                  type="object" class="btn-primary"
+                  invisible="state != 'at_pending'"/>
+          <button name="action_create_transfer"
+                  string="Criar Transferencia"
+                  type="object" class="btn-success"
+                  invisible="state != 'at_approved'"/>
+          <button name="action_cancel"
+                  string="Cancelar"
+                  type="object" class="btn-danger"
+                  invisible="state not in ('draft','xml_ready','email_sent','at_pending')"/>
+          <field name="state" widget="statusbar"
+                 statusbar_visible="draft,xml_ready,email_sent,at_pending,at_approved,transferred"/>
+        </header>
+        <sheet>
+          <div class="oe_title">
+            <h1><field name="name"/></h1>
+          </div>
+          <group>
+            <group string="Dados Gerais">
+              <field name="document_type"/>
+              <field name="origin_warehouse_id"/>
+              <field name="destination_warehouse_id"/>
+              <field name="zone_id"/>
+              <field name="period_from"/>
+              <field name="period_to"/>
+              <field name="email_recipient"/>
+            </group>
+            <group string="Codigo AT">
+              <field name="at_code"/>
+              <field name="at_code_date"/>
+              <field name="at_code_inserted_by"/>
+              <field name="stamp_qty"/>
+              <field name="date"/>
+            </group>
+          </group>
+          <notebook>
+            <page string="Lotes INCM" name="lots">
+              <field name="lot_ids" widget="many2many_tags"/>
+              <field name="serial_ids">
+                <tree>
+                  <field name="serial_number"/>
+                  <field name="lot_id"/>
+                  <field name="zone_id"/>
+                  <field name="state" widget="badge"/>
+                </tree>
+              </field>
+            </page>
+            <page string="XML" name="xml">
+              <group>
+                <field name="xml_filename"/>
+                <field name="xml_generated_at"/>
+                <field name="xml_sent_by_email"/>
+                <field name="xml_sent_at"/>
+                <field name="xml_file" filename="xml_filename"/>
+              </group>
+              <field name="xml_content" readonly="1"/>
+            </page>
+            <page string="Transferencia" name="transfer"
+                  invisible="state not in ('at_approved','transferred')">
+              <group>
+                <field name="transfer_picking_id"/>
+              </group>
+            </page>
+            <page string="Log" name="log">
+              <field name="operation_log" readonly="1"/>
+            </page>
+          </notebook>
+        </sheet>
+        <div class="oe_chatter">
+          <field name="message_follower_ids"/>
+          <field name="activity_ids"/>
+          <field name="message_ids"/>
+        </div>
+      </form>
+    </field>
+  </record>
+
+  <record id="view_fiscal_document_search" model="ir.ui.view">
+    <field name="name">tobacco.fiscal.document.search</field>
+    <field name="model">tobacco.fiscal.document</field>
+    <field name="arch" type="xml">
+      <search>
+        <field name="name"/>
+        <field name="at_code"/>
+        <filter name="edic" string="eDIC"
+                domain="[('document_type', '=', 'edic')]"/>
+        <filter name="eda" string="e-DA"
+                domain="[('document_type', '=', 'eda')]"/>
+        <separator/>
+        <filter name="pending" string="Aguarda AT"
+                domain="[('state', '=', 'at_pending')]"/>
+        <filter name="approved" string="AT Aprovada"
+                domain="[('state', '=', 'at_approved')]"/>
+        <group expand="0" string="Agrupar por">
+          <filter name="group_type" string="Tipo"
+                  context="{'group_by': 'document_type'}"/>
+          <filter name="group_state" string="Estado"
+                  context="{'group_by': 'state'}"/>
+        </group>
+      </search>
+    </field>
+  </record>
+
+  <record id="action_fiscal_document_all" model="ir.actions.act_window">
+    <field name="name">Documentos Fiscais</field>
+    <field name="res_model">tobacco.fiscal.document</field>
+    <field name="view_mode">tree,form</field>
+  </record>
+  <record id="action_fiscal_document_edic" model="ir.actions.act_window">
+    <field name="name">eDIC — Introducao no Consumo</field>
+    <field name="res_model">tobacco.fiscal.document</field>
+    <field name="view_mode">tree,form</field>
+    <field name="domain">[('document_type', '=', 'edic')]</field>
+    <field name="context">{'default_document_type': 'edic'}</field>
+  </record>
+  <record id="action_fiscal_document_eda" model="ir.actions.act_window">
+    <field name="name">e-DA — Movimento entre Entrepostos</field>
+    <field name="res_model">tobacco.fiscal.document</field>
+    <field name="view_mode">tree,form</field>
+    <field name="domain">[('document_type', '=', 'eda')]</field>
+    <field name="context">{'default_document_type': 'eda'}</field>
+  </record>
+</odoo>

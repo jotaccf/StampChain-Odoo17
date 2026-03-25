@@ -1,6 +1,6 @@
 {
     'name': 'StampChain',
-    'version': '17.0.1.0.0',
+    'version': '17.0.1.1.0',
     'category': 'Manufacturing',
     'summary': 'Gestão de Armazém, Produção e '
                'Estampilhas IEC para Tabaco',
@@ -52,9 +52,13 @@
         'views/stamp_recovery_views.xml',
         'views/stamp_dashboard.xml',
         'views/wisedat_config_views.xml',
+        'views/fiscal_document_views.xml',
+        'views/warehouse_config_views.xml',
         'wizard/incm_reception_wizard_views.xml',
         'wizard/stamp_breakdown_wizard_views.xml',
         'wizard/min_stock_wizard_views.xml',
+        'wizard/at_code_wizard_views.xml',
+        'wizard/warehouse_setup_wizard_views.xml',
         'report/stamp_report.xml',
         'views/menus.xml',
     ],
