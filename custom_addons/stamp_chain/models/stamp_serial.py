@@ -38,7 +38,6 @@ class StampSerial(models.Model):
        default='available',
        required=True,
        index=True,
-       tracking=True,
     )
     production_id = fields.Many2one(
         'mrp.production',
