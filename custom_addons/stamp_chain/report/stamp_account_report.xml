@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data>
+    <record id="action_stamp_account_report" model="ir.actions.report">
+      <field name="name">Conta Corrente de Estampilhas</field>
+      <field name="model">tobacco.stamp.zone</field>
+      <field name="report_type">qweb-pdf</field>
+      <field name="report_name">stamp_chain.stamp_account_report</field>
+      <field name="report_file">stamp_chain.stamp_account_report</field>
+      <field name="binding_model_id" ref="model_tobacco_stamp_zone"/>
+      <field name="binding_type">report</field>
+    </record>
+
+    <template id="stamp_account_report">
+      <t t-call="web.html_container">
+        <t t-foreach="docs" t-as="zone">
+          <t t-call="web.external_layout">
+            <div class="page">
+              <div class="row mb-4">
+                <div class="col-12">
+                  <h2>Conta Corrente de Estampilhas IEC</h2>
+                  <h3>Zona: <t t-esc="zone.name"/> (<t t-esc="zone.code"/>)</h3>
+                </div>
+              </div>
+
+              <div class="row mb-4">
+                <div class="col-4 text-center">
+                  <strong>Saldo Actual</strong><br/>
+                  <span style="font-size: 2em;"><t t-esc="zone.balance"/></span>
+                </div>
+                <div class="col-4 text-center">
+                  <strong>Total Recebido</strong><br/>
+                  <span style="font-size: 2em;"><t t-esc="zone.total_received"/></span>
+                </div>
+                <div class="col-4 text-center">
+                  <strong>Total Quebras</strong><br/>
+                  <span style="font-size: 2em;"><t t-esc="zone.total_broken"/></span>
+                </div>
+              </div>
+
+              <t t-if="zone.alert_active">
+                <div style="border: 1px solid #856404; background: #fff3cd; padding: 10px; margin-bottom: 15px;">
+                  <strong>AVISO:</strong> Saldo abaixo do minimo configurado
+                  (<t t-esc="zone.min_stock_alert"/> unidades).
+                </div>
+              </t>
+
+              <h4>Movimentos</h4>
+              <table class="table table-sm table-striped">
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>Tipo</th>
+                    <th>Referencia</th>
+                    <th>Lote INCM</th>
+                    <th style="text-align:right">Quantidade</th>
+                    <th style="text-align:right">Saldo Apos</th>
+                    <th>Utilizador</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <t t-foreach="zone.movement_ids" t-as="move">
+                    <tr>
+                      <td><t t-esc="move.date"/></td>
+                      <td><t t-esc="dict(move._fields['move_type'].selection).get(move.move_type)"/></td>
+                      <td><t t-esc="move.reference or ''"/></td>
+                      <td><t t-esc="move.lot_id.incm_ref or ''"/></td>
+                      <td style="text-align:right"><t t-esc="move.qty"/></td>
+                      <td style="text-align:right"><strong><t t-esc="move.balance_after"/></strong></td>
+                      <td><t t-esc="move.user_id.name or ''"/></td>
+                    </tr>
+                  </t>
+                </tbody>
+              </table>
+
+              <h4>Lotes INCM</h4>
+              <table class="table table-sm">
+                <thead>
+                  <tr>
+                    <th>Ref. INCM</th>
+                    <th>Ref. Interna</th>
+                    <th>Data Recepcao</th>
+                    <th>eDIC</th>
+                    <th style="text-align:right">Recebido</th>
+                    <th style="text-align:right">Disponivel</th>
+                    <th style="text-align:right">Usado</th>
+                    <th style="text-align:right">Quebras</th>
+                    <th>Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <t t-foreach="zone.lot_ids" t-as="lot">
+                    <tr>
+                      <td><t t-esc="lot.incm_ref"/></td>
+                      <td><t t-esc="lot.name"/></td>
+                      <td><t t-esc="lot.reception_date"/></td>
+                      <td><t t-esc="lot.edic_ref or 'Pendente'"/></td>
+                      <td style="text-align:right"><t t-esc="lot.qty_received"/></td>
+                      <td style="text-align:right"><t t-esc="lot.qty_available"/></td>
+                      <td style="text-align:right"><t t-esc="lot.qty_used"/></td>
+                      <td style="text-align:right"><t t-esc="lot.qty_broken"/></td>
+                      <td><t t-esc="dict(lot._fields['state'].selection).get(lot.state)"/></td>
+                    </tr>
+                  </t>
+                </tbody>
+              </table>
+
+              <p class="text-muted small mt-4">StampChain — Documento gerado automaticamente. Uso interno.</p>
+            </div>
+          </t>
+        </t>
+      </t>
+    </template>
+  </data>
+</odoo>

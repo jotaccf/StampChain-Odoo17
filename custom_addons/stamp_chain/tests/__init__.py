@@ -8,3 +8,4 @@ from . import test_min_stock
 from . import test_expedition_trigger
 from . import test_fiscal_documents
 from . import test_wisedat_integration
+from . import test_acceptance
