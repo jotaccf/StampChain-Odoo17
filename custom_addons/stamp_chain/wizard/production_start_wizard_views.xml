@@ -5,36 +5,57 @@
     <field name="model">tobacco.production.start.wizard</field>
     <field name="arch" type="xml">
       <form>
-        <group>
-          <field name="production_id" readonly="1"/>
-          <field name="zone_id"/>
-        </group>
-        <notebook>
-          <page string="Lote 1">
-            <group>
-              <field name="lot1_id"/>
-              <field name="lot1_range" readonly="1"/>
-              <field name="lot1_scan" placeholder="Ex: ZZAYC000"/>
-              <field name="lot1_scan_warning" readonly="1"/>
-              <field name="lot1_scan_confirmed"/>
-            </group>
-          </page>
-          <page string="Lote 2">
-            <group>
-              <field name="lot2_id"/>
-              <field name="lot2_range" readonly="1"/>
-              <field name="lot2_scan" placeholder="Ex: ZZAYF000"/>
-              <field name="lot2_scan_warning" readonly="1"/>
-              <field name="lot2_scan_confirmed"/>
-            </group>
-          </page>
-        </notebook>
-        <div class="alert alert-info">
-          Picar a estampilha do topo de cada maco ao colocar na maquina.
+        <div class="sc-hh-topbar amber">
+          <div>
+            <div class="sc-hh-topbar-title">Iniciar Estampilhagem</div>
+            <div class="sc-hh-topbar-sub">Scan x2 lotes na maquina</div>
+          </div>
+        </div>
+        <div class="sc-hh-body">
+          <group>
+            <field name="production_id" readonly="1"/>
+            <field name="zone_id"/>
+          </group>
+          <notebook>
+            <page string="Lote 1">
+              <group>
+                <field name="lot1_id"/>
+                <field name="lot1_range" readonly="1" class="sc-mono"/>
+                <div class="sc-hh-label">Scan inicio — Lote 1</div>
+                <field name="lot1_scan" class="sc-hh-input"
+                       placeholder="Ex: ZZAYC000" nolabel="1"/>
+                <field name="lot1_scan_warning" readonly="1"
+                       class="text-danger fw-bold"/>
+                <field name="lot1_scan_confirmed" widget="boolean_toggle"
+                       string="Lote 1 confirmado"/>
+              </group>
+            </page>
+            <page string="Lote 2">
+              <group>
+                <field name="lot2_id"/>
+                <field name="lot2_range" readonly="1" class="sc-mono"/>
+                <div class="sc-hh-label">Scan inicio — Lote 2</div>
+                <field name="lot2_scan" class="sc-hh-input"
+                       placeholder="Ex: ZZAYF000" nolabel="1"/>
+                <field name="lot2_scan_warning" readonly="1"
+                       class="text-danger fw-bold"/>
+                <field name="lot2_scan_confirmed" widget="boolean_toggle"
+                       string="Lote 2 confirmado"/>
+              </group>
+            </page>
+          </notebook>
+          <div class="sc-hh-feedback info" style="margin-top:8px">
+            <div class="sc-hh-feedback-title">Instrucoes</div>
+            <div class="sc-hh-feedback-sub">
+              Picar a estampilha do topo de cada maco ao colocar na maquina.
+              O sistema valida que o serial existe e esta disponivel.
+            </div>
+          </div>
         </div>
         <footer>
           <button name="action_confirm" string="Iniciar Producao"
-                  type="object" class="btn-primary"/>
+                  type="object" class="btn-primary sc-hh-btn warning"
+                  style="min-width:200px"/>
           <button string="Cancelar" class="btn-secondary" special="cancel"/>
         </footer>
       </form>

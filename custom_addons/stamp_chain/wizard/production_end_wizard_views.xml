@@ -5,46 +5,82 @@
     <field name="model">tobacco.production.end.wizard</field>
     <field name="arch" type="xml">
       <form>
-        <group>
-          <field name="production_id" readonly="1"/>
-        </group>
-        <notebook>
-          <page string="Lote 1">
-            <group>
-              <field name="lot1_id" readonly="1"/>
-              <field name="lot1_exhausted"/>
-              <field name="lot1_last_scan" placeholder="Ex: ZZAYC187"
-                     invisible="lot1_exhausted"/>
-              <field name="lot1_scan_confirmed"
-                     invisible="lot1_exhausted"/>
-              <field name="lot1_consumed_stored" readonly="1"/>
-              <field name="lot1_remaining_stored" readonly="1"/>
-            </group>
-          </page>
-          <page string="Lote 2">
-            <group>
-              <field name="lot2_id" readonly="1"/>
-              <field name="lot2_exhausted"/>
-              <field name="lot2_last_scan" placeholder="Ex: ZZAYF200"
-                     invisible="lot2_exhausted"/>
-              <field name="lot2_scan_confirmed"
-                     invisible="lot2_exhausted"/>
-              <field name="lot2_consumed_stored" readonly="1"/>
-              <field name="lot2_remaining_stored" readonly="1"/>
-            </group>
-          </page>
-          <page string="Resumo">
-            <group>
-              <field name="total_consumed_stored" readonly="1"/>
-            </group>
-          </page>
-        </notebook>
-        <div class="alert alert-info">
-          Picar a estampilha do topo do que sobrou. Se esgotado, marcar a checkbox.
+        <div class="sc-hh-topbar amber">
+          <div>
+            <div class="sc-hh-topbar-title">Registar Fim de Producao</div>
+            <div class="sc-hh-topbar-sub">Scan ultima sobrante x2 lotes</div>
+          </div>
+        </div>
+        <div class="sc-hh-body">
+          <group>
+            <field name="production_id" readonly="1"/>
+          </group>
+          <notebook>
+            <page string="Lote 1">
+              <group>
+                <field name="lot1_id" readonly="1"/>
+                <field name="lot1_exhausted" widget="boolean_toggle"
+                       string="Lote 1 esgotado na totalidade"/>
+                <div invisible="lot1_exhausted">
+                  <div class="sc-hh-label">Ultima sobrante — Lote 1</div>
+                  <field name="lot1_last_scan" class="sc-hh-input"
+                         placeholder="Ex: ZZAYC187" nolabel="1"/>
+                  <field name="lot1_scan_confirmed" widget="boolean_toggle"
+                         string="Lote 1 confirmado"/>
+                </div>
+                <div class="sc-hh-feedback info" style="margin-top:8px">
+                  <div class="sc-hh-feedback-sub">
+                    Consumidas: <field name="lot1_consumed_stored" readonly="1"
+                                      nolabel="1" style="display:inline; font-weight:600"/>
+                    | Sobrantes: <field name="lot1_remaining_stored" readonly="1"
+                                       nolabel="1" style="display:inline; font-weight:600"/>
+                  </div>
+                </div>
+              </group>
+            </page>
+            <page string="Lote 2">
+              <group>
+                <field name="lot2_id" readonly="1"/>
+                <field name="lot2_exhausted" widget="boolean_toggle"
+                       string="Lote 2 esgotado na totalidade"/>
+                <div invisible="lot2_exhausted">
+                  <div class="sc-hh-label">Ultima sobrante — Lote 2</div>
+                  <field name="lot2_last_scan" class="sc-hh-input"
+                         placeholder="Ex: ZZAYF200" nolabel="1"/>
+                  <field name="lot2_scan_confirmed" widget="boolean_toggle"
+                         string="Lote 2 confirmado"/>
+                </div>
+                <div class="sc-hh-feedback info" style="margin-top:8px">
+                  <div class="sc-hh-feedback-sub">
+                    Consumidas: <field name="lot2_consumed_stored" readonly="1"
+                                      nolabel="1" style="display:inline; font-weight:600"/>
+                    | Sobrantes: <field name="lot2_remaining_stored" readonly="1"
+                                       nolabel="1" style="display:inline; font-weight:600"/>
+                  </div>
+                </div>
+              </group>
+            </page>
+            <page string="Resumo">
+              <div class="sc-hh-code-box" style="margin-top:12px">
+                <div class="sc-hh-code-text">
+                  <field name="total_consumed_stored" readonly="1" nolabel="1"/>
+                </div>
+                <div class="sc-hh-code-sub">estampilhas consumidas no total</div>
+              </div>
+            </page>
+          </notebook>
+          <div class="sc-hh-feedback warn" style="margin-top:8px">
+            <div class="sc-hh-feedback-title">Instrucoes</div>
+            <div class="sc-hh-feedback-sub">
+              Picar a estampilha do topo do que sobrou.
+              Se o lote foi consumido na totalidade, marcar "Esgotado".
+            </div>
+          </div>
         </div>
         <footer>
           <button name="action_confirm" string="Registar Fim de Producao"
-                  type="object" class="btn-primary"/>
+                  type="object" class="btn-primary sc-hh-btn danger"
+                  style="min-width:200px"/>
           <button string="Cancelar" class="btn-secondary" special="cancel"/>
         </footer>
       </form>

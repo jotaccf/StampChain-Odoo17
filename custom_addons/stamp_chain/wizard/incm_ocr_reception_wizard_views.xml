@@ -5,31 +5,48 @@
     <field name="model">tobacco.incm.ocr.reception.wizard</field>
     <field name="arch" type="xml">
       <form>
-        <group>
+        <field name="has_valid_code" invisible="1"/>
+        <div class="sc-hh-topbar green">
+          <div>
+            <div class="sc-hh-topbar-title">Receber Lote INCM</div>
+            <div class="sc-hh-topbar-sub">OCR + Extrapolacao automatica</div>
+          </div>
+        </div>
+        <div class="sc-hh-body">
           <group>
-            <field name="zone_id"/>
-            <field name="reception_date"/>
-            <field name="incm_ref"/>
+            <group>
+              <field name="zone_id"/>
+              <field name="reception_date"/>
+              <field name="incm_ref" placeholder="Referencia da guia INCM"/>
+            </group>
+            <group>
+              <div class="sc-hh-label">Codigo da 1a Estampilha</div>
+              <field name="first_serial_ocr" class="sc-hh-input"
+                     placeholder="Ex: ZZAYC000" nolabel="1"/>
+              <div class="sc-hh-input-hint" style="margin-bottom:12px">
+                5 letras maiusculas + 3 digitos (ex: ZZAYC000)
+              </div>
+              <field name="ocr_confirmed" widget="boolean_toggle"
+                     string="Codigo confirmado pelo operador"/>
+            </group>
           </group>
-          <group>
-            <field name="first_serial_ocr" placeholder="Ex: ZZAYC000"/>
-            <field name="ocr_confirmed"/>
-            <field name="has_valid_code" invisible="1"/>
-          </group>
-        </group>
-        <group invisible="not has_valid_code">
-          <group string="Previa Extrapolacao">
-            <field name="serial_prefix" readonly="1"/>
-            <field name="last_serial_preview" readonly="1"/>
-            <field name="qty_total" readonly="1"/>
-          </group>
-        </group>
-        <div class="alert alert-info" invisible="not has_valid_code">
-          500 seriais serao gerados automaticamente por extrapolacao.
+          <div class="sc-hh-feedback ok" invisible="not has_valid_code"
+               style="margin-top:8px">
+            <div class="sc-hh-feedback-title">Extrapolacao automatica</div>
+            <div class="sc-hh-feedback-sub">
+              Prefixo: <field name="serial_prefix" readonly="1" nolabel="1"
+                              class="sc-mono" style="display:inline"/>
+              | Ultima: <field name="last_serial_preview" readonly="1" nolabel="1"
+                               class="sc-mono" style="display:inline"/>
+              | Total: <field name="qty_total" readonly="1" nolabel="1"
+                              style="display:inline"/> estampilhas
+            </div>
+          </div>
         </div>
         <footer>
           <button name="action_confirm" string="Confirmar Recepcao"
-                  type="object" class="btn-primary"/>
+                  type="object" class="btn-primary sc-hh-btn primary"
+                  style="min-width:200px"/>
           <button string="Cancelar" class="btn-secondary" special="cancel"/>
         </footer>
       </form>
