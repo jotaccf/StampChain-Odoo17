@@ -41,43 +41,92 @@
             <field name="state" widget="statusbar"/>
           </header>
           <sheet>
+            <!-- Metric cards (C1) -->
+            <div class="row mt-2 mb-3">
+              <div class="col-4">
+                <div class="sc-metric-card">
+                  <div class="sc-metric-label">Teorico</div>
+                  <div class="sc-metric-value">
+                    <field name="stock_theoretical" readonly="1" widget="integer" nolabel="1"/>
+                  </div>
+                </div>
+              </div>
+              <div class="col-4">
+                <div class="sc-metric-card">
+                  <div class="sc-metric-label">Real</div>
+                  <div class="sc-metric-value">
+                    <field name="stock_real" readonly="1" widget="integer" nolabel="1"/>
+                  </div>
+                </div>
+              </div>
+              <div class="col-4">
+                <div class="sc-metric-card sc-metric-err" invisible="discrepancy &lt;= 0">
+                  <div class="sc-metric-label">Discrepancia</div>
+                  <div class="sc-metric-value">
+                    <field name="discrepancy" readonly="1" widget="integer" nolabel="1"/>
+                  </div>
+                </div>
+                <div class="sc-metric-card sc-metric-info" invisible="discrepancy &gt;= 0">
+                  <div class="sc-metric-label">Discrepancia</div>
+                  <div class="sc-metric-value">
+                    <field name="discrepancy" readonly="1" widget="integer" nolabel="1"/>
+                  </div>
+                </div>
+                <div class="sc-metric-card sc-metric-ok" invisible="discrepancy != 0">
+                  <div class="sc-metric-label">Discrepancia</div>
+                  <div class="sc-metric-value">
+                    <field name="discrepancy" readonly="1" widget="integer" nolabel="1"/>
+                  </div>
+                </div>
+              </div>
+            </div>
             <group>
-              <group string="Discrepancia">
-                <field name="zone_id"/>
-                <field name="date"/>
-                <field name="audit_type"/>
-                <field name="production_id" invisible="not production_id"/>
-                <field name="discrepancy"/>
-                <field name="discrepancy_direction"/>
+              <group string="Dados">
+                <field name="zone_id" readonly="1"/>
+                <field name="date" readonly="1"/>
+                <field name="audit_type" readonly="1"/>
+                <field name="production_id" readonly="1" invisible="not production_id"/>
+                <field name="discrepancy_direction" readonly="1"/>
               </group>
-              <group string="Stock no Momento">
-                <field name="stock_theoretical"/>
-                <field name="stock_real"/>
-                <field name="stock_real_auto"/>
-                <field name="stock_real_manual"/>
+              <group string="Stock">
+                <field name="stock_real_auto" readonly="1"/>
+                <field name="stock_real_manual" readonly="1" invisible="stock_real_manual == 0"/>
               </group>
             </group>
             <notebook>
               <page string="Justificacao">
-                <group>
-                  <field name="justification"/>
-                  <field name="justified_by"/>
-                  <field name="justified_date"/>
-                </group>
+                <div invisible="state != 'open'" class="mb-3">
+                  <field name="justification" placeholder="Introduza a justificacao..."/>
+                  <div class="sc-hh-feedback warn" style="margin-top:8px">
+                    <div class="sc-hh-feedback-sub">
+                      A justificacao e permanente e nao pode ser alterada.
+                    </div>
+                  </div>
+                </div>
+                <div invisible="state == 'open'">
+                  <group>
+                    <field name="justification" readonly="1"/>
+                    <field name="justified_by" readonly="1"/>
+                    <field name="justified_date" readonly="1"/>
+                  </group>
+                </div>
               </page>
               <page string="Estampilhas Encontradas">
                 <field name="found_ids">
-                  <tree>
+                  <tree decoration-success="state == 'approved'"
+                        decoration-danger="state == 'rejected'"
+                        decoration-warning="state == 'pending'">
                     <field name="name"/>
-                    <field name="serial_code"/>
+                    <field name="serial_code" class="font-monospace"/>
                     <field name="found_location"/>
                     <field name="found_by"/>
+                    <field name="date"/>
                     <field name="state"/>
                   </tree>
                 </field>
                 <group>
-                  <field name="qty_found"/>
-                  <field name="net_discrepancy"/>
+                  <field name="qty_found" readonly="1"/>
+                  <field name="net_discrepancy" readonly="1"/>
                 </group>
               </page>
             </notebook>

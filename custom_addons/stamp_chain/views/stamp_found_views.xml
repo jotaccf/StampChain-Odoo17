@@ -23,22 +23,40 @@
             <field name="state" widget="statusbar"/>
           </header>
           <sheet>
+            <div class="sc-hh-code-box" style="margin:16px 0">
+              <div class="sc-hh-code-text">
+                <field name="serial_code"
+                       readonly="state != 'pending'"
+                       nolabel="1"
+                       class="font-monospace"/>
+              </div>
+              <div class="sc-hh-code-sub">
+                Lote: <field name="lot_id" readonly="1"
+                             nolabel="1" style="display:inline"/>
+              </div>
+            </div>
             <group>
-              <group>
+              <group string="Ocorrencia">
                 <field name="audit_id" readonly="1"/>
-                <field name="serial_code"/>
-                <field name="lot_id"/>
+                <field name="zone_id" readonly="1"/>
                 <field name="found_location"/>
-              </group>
-              <group>
-                <field name="found_by"/>
-                <field name="date"/>
+                <field name="found_by" readonly="1"/>
+                <field name="date" readonly="1"/>
                 <field name="photo" widget="image"/>
-                <field name="approval_notes"/>
-                <field name="approved_by"/>
-                <field name="approval_date"/>
+              </group>
+              <group string="Aprovacao" invisible="state == 'pending'">
+                <field name="approved_by" readonly="1"/>
+                <field name="approval_date" readonly="1"/>
+                <field name="approval_notes" readonly="1"/>
+                <field name="serial_id" readonly="1" invisible="not serial_id"/>
               </group>
             </group>
+            <div class="sc-hh-feedback ok" invisible="state != 'approved'" style="margin:12px 0">
+              <div class="sc-hh-feedback-title">Estampilha aprovada e adicionada ao stock</div>
+            </div>
+            <div class="sc-hh-feedback err" invisible="state != 'rejected'" style="margin:12px 0">
+              <div class="sc-hh-feedback-title">Entrada rejeitada</div>
+            </div>
           </sheet>
           <chatter/>
         </form>
@@ -49,9 +67,12 @@
       <field name="name">tobacco.stamp.found.list</field>
       <field name="model">tobacco.stamp.found</field>
       <field name="arch" type="xml">
-        <tree>
+        <tree decoration-success="state == 'approved'"
+              decoration-danger="state == 'rejected'"
+              decoration-warning="state == 'pending'">
           <field name="name"/>
-          <field name="serial_code"/>
+          <field name="date"/>
+          <field name="serial_code" class="font-monospace"/>
           <field name="zone_id"/>
           <field name="found_location"/>
           <field name="found_by"/>

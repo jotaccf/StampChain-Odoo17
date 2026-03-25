@@ -131,7 +131,7 @@
   <menuitem id="menu_contagens"
             name="Contagens Fisicas"
             parent="menu_auditoria"
-            action="action_physical_count_wizard"
+            action="action_physical_count_list"
             sequence="3"/>
 
   <!-- Configuracoes (apenas managers) -->

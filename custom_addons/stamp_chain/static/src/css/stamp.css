@@ -244,3 +244,33 @@
     align-items: center !important;
   }
 }
+
+/* ── Metric cards auditoria ───────────── */
+.sc-metric-card {
+  background: var(--color-background-secondary, #f8f9fa);
+  border-radius: 8px;
+  padding: 12px 16px;
+  text-align: center;
+  border: 0.5px solid var(--color-border-tertiary, #dee2e6);
+}
+.sc-metric-label {
+  font-size: 11px;
+  color: var(--color-text-secondary, #6c757d);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+}
+.sc-metric-value {
+  font-size: 32px;
+  font-weight: 500;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-primary, #212529);
+}
+.sc-metric-err { border-color: var(--sc-red); background: var(--sc-red-light); }
+.sc-metric-err .sc-metric-value { color: var(--sc-red); }
+.sc-metric-info { border-color: var(--sc-blue); background: var(--sc-blue-light); }
+.sc-metric-info .sc-metric-value { color: var(--sc-blue); }
+.sc-metric-ok { border-color: var(--sc-green); background: var(--sc-green-light); }
+.sc-metric-ok .sc-metric-value { color: var(--sc-green); }

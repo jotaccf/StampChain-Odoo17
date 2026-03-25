@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data>
+
+    <record id="view_physical_count_list" model="ir.ui.view">
+      <field name="name">tobacco.stamp.physical.count.list</field>
+      <field name="model">tobacco.stamp.physical.count</field>
+      <field name="arch" type="xml">
+        <tree decoration-danger="discrepancy_snapshot &gt; 0"
+              decoration-info="discrepancy_snapshot &lt; 0"
+              decoration-success="discrepancy_snapshot == 0">
+          <field name="date"/>
+          <field name="zone_id"/>
+          <field name="qty_counted"/>
+          <field name="stock_theoretical_snapshot"/>
+          <field name="discrepancy_snapshot"/>
+          <field name="counted_by"/>
+          <field name="audit_id"/>
+        </tree>
+      </field>
+    </record>
+
+    <record id="view_physical_count_form" model="ir.ui.view">
+      <field name="name">tobacco.stamp.physical.count.form</field>
+      <field name="model">tobacco.stamp.physical.count</field>
+      <field name="arch" type="xml">
+        <form create="0" edit="0">
+          <sheet>
+            <div class="row mt-2 mb-3">
+              <div class="col-4">
+                <div class="sc-metric-card">
+                  <div class="sc-metric-label">Contado</div>
+                  <div class="sc-metric-value">
+                    <field name="qty_counted" readonly="1" widget="integer" nolabel="1"/>
+                  </div>
+                </div>
+              </div>
+              <div class="col-4">
+                <div class="sc-metric-card">
+                  <div class="sc-metric-label">Teorico</div>
+                  <div class="sc-metric-value">
+                    <field name="stock_theoretical_snapshot" readonly="1" widget="integer" nolabel="1"/>
+                  </div>
+                </div>
+              </div>
+              <div class="col-4">
+                <div class="sc-metric-card sc-metric-err" invisible="discrepancy_snapshot &lt;= 0">
+                  <div class="sc-metric-label">Discrepancia</div>
+                  <div class="sc-metric-value">
+                    <field name="discrepancy_snapshot" readonly="1" widget="integer" nolabel="1"/>
+                  </div>
+                </div>
+                <div class="sc-metric-card sc-metric-info" invisible="discrepancy_snapshot &gt;= 0">
+                  <div class="sc-metric-label">Discrepancia</div>
+                  <div class="sc-metric-value">
+                    <field name="discrepancy_snapshot" readonly="1" widget="integer" nolabel="1"/>
+                  </div>
+                </div>
+                <div class="sc-metric-card sc-metric-ok" invisible="discrepancy_snapshot != 0">
+                  <div class="sc-metric-label">Discrepancia</div>
+                  <div class="sc-metric-value">
+                    <field name="discrepancy_snapshot" readonly="1" widget="integer" nolabel="1"/>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <group>
+              <group string="Dados">
+                <field name="zone_id" readonly="1"/>
+                <field name="date" readonly="1"/>
+                <field name="counted_by" readonly="1"/>
+                <field name="stock_real_auto_snapshot" readonly="1"/>
+              </group>
+              <group string="Auditoria" invisible="not audit_id">
+                <field name="audit_id" readonly="1"/>
+                <div class="sc-hh-feedback warn">
+                  <div class="sc-hh-feedback-sub">
+                    Auditoria criada automaticamente para esta discrepancia.
+                  </div>
+                </div>
+              </group>
+            </group>
+            <group invisible="not notes">
+              <field name="notes" readonly="1"/>
+            </group>
+          </sheet>
+        </form>
+      </field>
+    </record>
+
+    <record id="action_physical_count_list" model="ir.actions.act_window">
+      <field name="name">Contagens Fisicas</field>
+      <field name="res_model">tobacco.stamp.physical.count</field>
+      <field name="view_mode">list,form</field>
+    </record>
+
+  </data>
+</odoo>
