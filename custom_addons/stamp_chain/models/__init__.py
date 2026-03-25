@@ -14,3 +14,6 @@ from . import stamp_recovery
 from . import stamp_zone_history
 from . import fiscal_document
 from . import warehouse_config
+from . import stamp_audit
+from . import stamp_found
+from . import stamp_physical_count

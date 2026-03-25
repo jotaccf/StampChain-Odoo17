@@ -63,6 +63,14 @@
                       Stock abaixo do minimo!
                     </div>
                   </t>
+                  <t t-if="zone.discrepancy_active">
+                    <div t-attf-class="mt-2 py-1 px-2 rounded text-center small #{getDiscrepancyClass(zone)}">
+                      <t t-esc="getDiscrepancyLabel(zone)"/>
+                      <t t-if="zone.audit_open_count > 0">
+                        (<t t-esc="zone.audit_open_count"/> auditoria(s))
+                      </t>
+                    </div>
+                  </t>
                 </div>
               </div>
             </div>

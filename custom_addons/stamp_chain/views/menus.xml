@@ -97,6 +97,27 @@
             action="action_fiscal_document_all"
             sequence="3"/>
 
+  <!-- Auditoria -->
+  <menuitem id="menu_auditoria"
+            name="Auditoria"
+            parent="menu_stampchain_root"
+            sequence="50"/>
+  <menuitem id="menu_discrepancias"
+            name="Discrepancias"
+            parent="menu_auditoria"
+            action="action_stamp_audit"
+            sequence="1"/>
+  <menuitem id="menu_encontradas"
+            name="Estampilhas Encontradas"
+            parent="menu_auditoria"
+            action="action_stamp_found"
+            sequence="2"/>
+  <menuitem id="menu_contagens"
+            name="Contagens Fisicas"
+            parent="menu_auditoria"
+            action="action_physical_count_wizard"
+            sequence="3"/>
+
   <!-- Configuracoes (apenas managers) -->
   <menuitem id="menu_config"
             name="Configuracoes"

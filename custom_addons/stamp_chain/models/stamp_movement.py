@@ -20,6 +20,7 @@ class StampMovement(models.Model):
         ('out', 'Saida (Expedicao)'),
         ('breakdown', 'Quebra'),
         ('recovery', 'Recuperacao'),
+        ('recovery_found', 'Estampilha Encontrada'),
         ('adjust', 'Ajuste Manual'),
     ], string='Tipo', required=True)
     qty = fields.Integer(
@@ -69,7 +70,7 @@ class StampMovement(models.Model):
             current_balance = zone.balance
             qty = vals.get('qty', 0)
             move_type = vals.get('move_type', '')
-            if move_type in ('in', 'recovery'):
+            if move_type in ('in', 'recovery', 'recovery_found'):
                 vals['balance_after'] = (
                     current_balance + qty
                 )

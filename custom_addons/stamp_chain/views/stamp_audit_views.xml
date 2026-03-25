@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data>
+
+    <record id="view_stamp_audit_list" model="ir.ui.view">
+      <field name="name">tobacco.stamp.audit.list</field>
+      <field name="model">tobacco.stamp.audit</field>
+      <field name="arch" type="xml">
+        <tree decoration-danger="discrepancy &gt; 0"
+              decoration-info="discrepancy &lt; 0"
+              decoration-success="state == 'justified'">
+          <field name="name"/>
+          <field name="date"/>
+          <field name="zone_id"/>
+          <field name="discrepancy_direction"/>
+          <field name="discrepancy"/>
+          <field name="net_discrepancy"/>
+          <field name="audit_type"/>
+          <field name="state"/>
+          <field name="is_justified"/>
+        </tree>
+      </field>
+    </record>
+
+    <record id="view_stamp_audit_form" model="ir.ui.view">
+      <field name="name">tobacco.stamp.audit.form</field>
+      <field name="model">tobacco.stamp.audit</field>
+      <field name="arch" type="xml">
+        <form>
+          <header>
+            <button name="action_justify"
+                    string="Justificar"
+                    type="object"
+                    class="btn-primary"
+                    invisible="state != 'open'"/>
+            <button name="action_add_found_stamp"
+                    string="Registar Estampilha Encontrada"
+                    type="object"
+                    class="btn-secondary"
+                    invisible="state != 'open'"/>
+            <field name="state" widget="statusbar"/>
+          </header>
+          <sheet>
+            <group>
+              <group string="Discrepancia">
+                <field name="zone_id"/>
+                <field name="date"/>
+                <field name="audit_type"/>
+                <field name="production_id" invisible="not production_id"/>
+                <field name="discrepancy"/>
+                <field name="discrepancy_direction"/>
+              </group>
+              <group string="Stock no Momento">
+                <field name="stock_theoretical"/>
+                <field name="stock_real"/>
+                <field name="stock_real_auto"/>
+                <field name="stock_real_manual"/>
+              </group>
+            </group>
+            <notebook>
+              <page string="Justificacao">
+                <group>
+                  <field name="justification"/>
+                  <field name="justified_by"/>
+                  <field name="justified_date"/>
+                </group>
+              </page>
+              <page string="Estampilhas Encontradas">
+                <field name="found_ids">
+                  <tree>
+                    <field name="name"/>
+                    <field name="serial_code"/>
+                    <field name="found_location"/>
+                    <field name="found_by"/>
+                    <field name="state"/>
+                  </tree>
+                </field>
+                <group>
+                  <field name="qty_found"/>
+                  <field name="net_discrepancy"/>
+                </group>
+              </page>
+            </notebook>
+          </sheet>
+          <chatter/>
+        </form>
+      </field>
+    </record>
+
+    <record id="view_stamp_audit_search" model="ir.ui.view">
+      <field name="name">tobacco.stamp.audit.search</field>
+      <field name="model">tobacco.stamp.audit</field>
+      <field name="arch" type="xml">
+        <search>
+          <field name="zone_id"/>
+          <field name="audit_type"/>
+          <filter name="open" string="Abertos" domain="[('state', '=', 'open')]"/>
+          <filter name="justified" string="Justificados" domain="[('state', '=', 'justified')]"/>
+          <group expand="0" string="Agrupar">
+            <filter name="group_zone" string="Zona" context="{'group_by': 'zone_id'}"/>
+            <filter name="group_direction" string="Sentido" context="{'group_by': 'discrepancy_direction'}"/>
+          </group>
+        </search>
+      </field>
+    </record>
+
+    <record id="action_stamp_audit" model="ir.actions.act_window">
+      <field name="name">Discrepancias</field>
+      <field name="res_model">tobacco.stamp.audit</field>
+      <field name="view_mode">tree,form</field>
+    </record>
+
+  </data>
+</odoo>

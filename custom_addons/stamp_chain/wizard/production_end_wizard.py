@@ -219,6 +219,11 @@ class ProductionEndWizard(models.TransientModel):
 
         zone._send_stock_alert()
 
+        # Detecta discrepancia apos producao
+        audit = self._check_and_create_audit(
+            zone, self.production_id
+        )
+
         self.production_id.message_post(
             body=(
                 f'Producao concluida. '
@@ -302,3 +307,37 @@ class ProductionEndWizard(models.TransientModel):
                        else ' (esgotado)')
                 ),
             })
+
+    def _check_and_create_audit(
+        self, zone, production
+    ):
+        """Detecta discrepancia apos producao
+        e cria registo de auditoria se existir."""
+        theoretical = zone.stock_theoretical
+        real = zone.stock_real_auto
+        disc = theoretical - real
+        if disc == 0:
+            return None
+        audit = self.env[
+            'tobacco.stamp.audit'
+        ].create({
+            'zone_id': zone.id,
+            'stock_theoretical': theoretical,
+            'stock_real': real,
+            'stock_real_auto': real,
+            'discrepancy': disc,
+            'discrepancy_direction': (
+                'missing' if disc > 0
+                else 'surplus'
+            ),
+            'audit_type': 'production_end',
+            'production_id': production.id,
+        })
+        production.message_post(
+            body=(
+                f'Discrepancia detectada: '
+                f'{disc:+d} estampilhas. '
+                f'Auditoria: {audit.name}'
+            ),
+        )
+        return audit

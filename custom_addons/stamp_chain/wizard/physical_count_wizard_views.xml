@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data>
+
+    <record id="view_physical_count_wizard_form" model="ir.ui.view">
+      <field name="name">tobacco.stamp.physical.count.wizard.form</field>
+      <field name="model">tobacco.stamp.physical.count.wizard</field>
+      <field name="arch" type="xml">
+        <form>
+          <group>
+            <group>
+              <field name="zone_id"/>
+              <field name="stock_theoretical"/>
+              <field name="stock_real_auto"/>
+            </group>
+            <group>
+              <field name="qty_counted"/>
+              <field name="direction_preview"/>
+              <field name="has_discrepancy" invisible="1"/>
+            </group>
+          </group>
+          <div invisible="not has_discrepancy" class="alert alert-warning">
+            Sera criado um registo de auditoria para esta discrepancia.
+          </div>
+          <group>
+            <field name="notes"/>
+          </group>
+          <footer>
+            <button name="action_confirm"
+                    string="Confirmar Contagem"
+                    type="object"
+                    class="btn-primary"/>
+            <button string="Cancelar" class="btn-secondary" special="cancel"/>
+          </footer>
+        </form>
+      </field>
+    </record>
+
+    <record id="action_physical_count_wizard" model="ir.actions.act_window">
+      <field name="name">Contagem Fisica</field>
+      <field name="res_model">tobacco.stamp.physical.count.wizard</field>
+      <field name="view_mode">form</field>
+      <field name="target">new</field>
+    </record>
+
+  </data>
+</odoo>

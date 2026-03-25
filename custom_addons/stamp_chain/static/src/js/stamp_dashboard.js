@@ -31,6 +31,9 @@ class StampDashboard extends Component {
                 "alert_active", "color",
                 "total_received", "total_used",
                 "total_broken",
+                "discrepancy", "discrepancy_active",
+                "discrepancy_direction",
+                "audit_open_count",
             ]
         );
         const movements = await this.orm.searchRead(
@@ -76,6 +79,21 @@ class StampDashboard extends Component {
             adjust: "fa-sliders",
         };
         return icons[moveType] || "fa-circle";
+    }
+
+    getDiscrepancyClass(zone) {
+        if (!zone.discrepancy_active) return "";
+        return zone.discrepancy > 0
+            ? "stamp-disc-missing"
+            : "stamp-disc-surplus";
+    }
+
+    getDiscrepancyLabel(zone) {
+        if (!zone.discrepancy_active) return "";
+        const abs = Math.abs(zone.discrepancy);
+        return zone.discrepancy > 0
+            ? `Faltam ${abs}`
+            : `Sobram ${abs}`;
     }
 
     async openZone(zoneId) {

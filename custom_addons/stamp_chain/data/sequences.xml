@@ -31,5 +31,17 @@
       <field name="prefix">SC/FIS/%(year)s/</field>
       <field name="padding">5</field>
     </record>
+    <record id="seq_stamp_audit" model="ir.sequence">
+      <field name="name">Auditoria Discrepancia</field>
+      <field name="code">tobacco.stamp.audit</field>
+      <field name="prefix">SC/AUD/%(year)s/</field>
+      <field name="padding">5</field>
+    </record>
+    <record id="seq_stamp_found" model="ir.sequence">
+      <field name="name">Estampilha Encontrada</field>
+      <field name="code">tobacco.stamp.found</field>
+      <field name="prefix">SC/FND/%(year)s/</field>
+      <field name="padding">5</field>
+    </record>
   </data>
 </odoo>

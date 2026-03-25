@@ -7,3 +7,4 @@ from . import warehouse_setup_wizard
 from . import incm_ocr_reception_wizard
 from . import production_start_wizard
 from . import production_end_wizard
+from . import physical_count_wizard
