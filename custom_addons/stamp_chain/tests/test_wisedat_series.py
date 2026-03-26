@@ -33,6 +33,14 @@ class TestWisedatSeries(TransactionCase):
             'wisedat_config_id': cls.config.id,
         })
 
+    def _mock_commit(self):
+        """Neutraliza cr.commit() para nao
+        destruir o savepoint do TransactionCase."""
+        return patch.object(
+            type(self.env.cr), 'commit',
+            lambda *a: None
+        )
+
     @patch(
         'odoo.addons.stamp_chain.models'
         '.wisedat_sync.WisedatConfig'
@@ -64,7 +72,8 @@ class TestWisedatSeries(TransactionCase):
                 },
             ],
         }
-        self.config._sync_series()
+        with self._mock_commit():
+            self.config._sync_series()
         series = self.env[
             'tobacco.wisedat.series'
         ].search([
@@ -106,7 +115,8 @@ class TestWisedatSeries(TransactionCase):
                 'active': True,
             }],
         }
-        self.config._sync_series()
+        with self._mock_commit():
+            self.config._sync_series()
         rec = self.env[
             'tobacco.wisedat.series'
         ].search([
@@ -141,7 +151,8 @@ class TestWisedatSeries(TransactionCase):
                 'active': True,
             }],
         }
-        self.config._sync_series()
+        with self._mock_commit():
+            self.config._sync_series()
         removed = self.env[
             'tobacco.wisedat.series'
         ].search([
@@ -214,7 +225,8 @@ class TestWisedatSeries(TransactionCase):
         """Button action returns success
         notification."""
         mock_api.return_value = {'series': []}
-        result = self.config.action_sync_series()
+        with self._mock_commit():
+            result = self.config.action_sync_series()
         self.assertEqual(
             result['type'],
             'ir.actions.client'
@@ -237,8 +249,9 @@ class TestWisedatSeries(TransactionCase):
         mock_api.side_effect = Exception(
             'Connection refused'
         )
-        with self.assertRaises(UserError):
-            self.config._sync_series()
+        with self._mock_commit():
+            with self.assertRaises(UserError):
+                self.config._sync_series()
 
     def test_series_sql_constraint(self):
         """Duplicate wisedat_id per config is

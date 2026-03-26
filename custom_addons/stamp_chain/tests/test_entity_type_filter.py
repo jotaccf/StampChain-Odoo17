@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from unittest.mock import patch, call
+from unittest.mock import patch, call, PropertyMock
 from odoo.tests.common import TransactionCase
 from odoo.exceptions import UserError
 
@@ -36,6 +36,14 @@ class TestEntityTypeFilter(TransactionCase):
             'warehouse_type': 'main_warehouse',
             'wisedat_config_id': cls.config.id,
         })
+
+    def _mock_commit(self):
+        """Neutraliza cr.commit() para nao
+        destruir o savepoint do TransactionCase."""
+        return patch.object(
+            type(self.env.cr), 'commit',
+            lambda *a: None
+        )
 
     def test_allowed_types_b2b_only(self):
         """Default config returns B2B types."""
@@ -95,7 +103,8 @@ class TestEntityTypeFilter(TransactionCase):
                 'number_items': 1,
             },
         }
-        self.config._sync_customers_batch()
+        with self._mock_commit():
+            self.config._sync_customers_batch()
         partner.invalidate_recordset()
         # Name should NOT have changed
         self.assertEqual(
@@ -129,7 +138,8 @@ class TestEntityTypeFilter(TransactionCase):
                 'number_items': 1,
             },
         }
-        self.config._sync_customers_batch()
+        with self._mock_commit():
+            self.config._sync_customers_batch()
         partner.invalidate_recordset()
         self.assertEqual(
             partner.name,
@@ -163,7 +173,8 @@ class TestEntityTypeFilter(TransactionCase):
             },
         }
         mock_fetch_type.return_value = '0003'
-        self.config._sync_customers_batch()
+        with self._mock_commit():
+            self.config._sync_customers_batch()
         # Should have been created with entity_type
         partner = self.env['res.partner'].search([
             ('wisedat_id', '=', 9003)
@@ -200,7 +211,8 @@ class TestEntityTypeFilter(TransactionCase):
             },
         }
         mock_fetch_type.return_value = '0001'
-        self.config._sync_customers_batch()
+        with self._mock_commit():
+            self.config._sync_customers_batch()
         partner = self.env['res.partner'].search([
             ('wisedat_id', '=', 9004)
         ])
@@ -240,10 +252,11 @@ class TestEntityTypeFilter(TransactionCase):
                 }
             return {}
         mock_api.side_effect = side_effect
-        result = (
-            self.config
-            .action_classify_entity_types()
-        )
+        with self._mock_commit():
+            result = (
+                self.config
+                .action_classify_entity_types()
+            )
         self.assertEqual(
             result['params']['type'], 'success'
         )

@@ -33,6 +33,14 @@ class TestWisedatIntegration(TransactionCase):
             'wisedat_config_id': cls.config.id,
         })
 
+    def _mock_commit(self):
+        """Neutraliza cr.commit() para nao
+        destruir o savepoint do TransactionCase."""
+        return patch.object(
+            type(self.env.cr), 'commit',
+            lambda *a: None
+        )
+
     @patch(
         'odoo.addons.stamp_chain.models'
         '.wisedat_sync.WisedatConfig._api_call'
@@ -177,7 +185,8 @@ class TestWisedatIntegration(TransactionCase):
             'customers': [],
             'items': [],
         }
-        self.config.action_full_sync()
+        with self._mock_commit():
+            self.config.action_full_sync()
         self.assertIn(
             self.config.sync_status, ('ok', 'error')
         )
