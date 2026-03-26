@@ -36,7 +36,7 @@
             <group string="Sincronizacao">
               <field name="sync_customers"/>
               <field name="sync_products"/>
-              <field name="sync_transport_guides"/>
+              <field name="sync_orders"/>
               <field name="sync_frequency"/>
               <field name="last_sync_date"/>
               <field name="sync_status" widget="badge"
@@ -252,8 +252,8 @@
             </page>
             <page string="Series Documentais" name="series">
               <group>
-                <group string="Serie para Guias de Transporte">
-                  <field name="transport_guide_series_id"
+                <group string="Serie para Encomendas ECL">
+                  <field name="order_series_id"
                          options="{'no_create': True, 'no_open': True}"/>
                   <field name="last_sync_series_date"/>
                 </group>
@@ -270,7 +270,6 @@
                   <field name="wisedat_id"/>
                   <field name="name"/>
                   <field name="description"/>
-                  <field name="document_type"/>
                   <field name="is_active" widget="boolean_toggle"/>
                   <field name="last_sync_date"/>
                 </tree>

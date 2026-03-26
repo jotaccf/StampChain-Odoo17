@@ -267,14 +267,14 @@ class StockPicking(models.Model):
                 config = self.env[
                     'tobacco.wisedat.config'
                 ].search([], limit=1)
-                if config and config.sync_transport_guides:
+                if config and config.sync_orders:
                     try:
-                        config._create_wisedat_transport_guide(
+                        config._create_wisedat_order(
                             picking.id
                         )
                     except Exception as e:
                         _logger.warning(
-                            'Guia Wisedat falhou '
+                            'Encomenda Wisedat falhou '
                             '(nao bloqueia): %s', e
                         )
         return res

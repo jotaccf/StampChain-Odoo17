@@ -9,7 +9,6 @@
         <field name="wisedat_id"/>
         <field name="name"/>
         <field name="description"/>
-        <field name="document_type"/>
         <field name="is_active" widget="boolean_toggle"/>
         <field name="wisedat_config_id"/>
         <field name="last_sync_date"/>
@@ -30,9 +29,7 @@
               <field name="name" readonly="1"/>
               <field name="description" readonly="1"/>
             </group>
-            <group string="Classificacao">
-              <field name="document_type" readonly="1"/>
-              <field name="wisedat_document_type" readonly="1"/>
+            <group string="Estado">
               <field name="is_active"/>
               <field name="wisedat_config_id" readonly="1"/>
               <field name="last_sync_date" readonly="1"/>
@@ -51,17 +48,10 @@
       <search>
         <field name="name"/>
         <field name="description"/>
-        <field name="document_type"/>
         <filter name="active_only"
                 string="Activas"
                 domain="[('is_active', '=', True)]"/>
-        <filter name="transport_guides"
-                string="Guias de Transporte"
-                domain="[('document_type', '=', 'movement_of_goods')]"/>
         <group expand="0" string="Agrupar por">
-          <filter name="group_doc_type"
-                  string="Tipo Documento"
-                  context="{'group_by': 'document_type'}"/>
           <filter name="group_active"
                   string="Estado"
                   context="{'group_by': 'is_active'}"/>

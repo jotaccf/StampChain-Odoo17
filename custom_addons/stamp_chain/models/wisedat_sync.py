@@ -64,11 +64,11 @@ class WisedatConfig(models.Model):
         string='Sincronizar Artigos',
         default=True,
     )
-    sync_transport_guides = fields.Boolean(
-        string='Criar Guias Transporte',
+    sync_orders = fields.Boolean(
+        string='Criar Encomendas ECL',
         default=True,
-        help='Cria guia de transporte no Wisedat '
-             'ao validar expedicao (POST /movementofgoods)',
+        help='Cria encomenda no Wisedat ao validar '
+             'expedicao (POST /orders)',
     )
     sync_frequency = fields.Selection([
         ('realtime', 'Tempo Real'),
@@ -143,15 +143,13 @@ class WisedatConfig(models.Model):
         'wisedat_config_id',
         string='Series Documentais',
     )
-    transport_guide_series_id = fields.Many2one(
+    order_series_id = fields.Many2one(
         'tobacco.wisedat.series',
-        string='Serie Guia de Transporte',
+        string='Serie Encomendas',
         domain="[('wisedat_config_id', '=', id),"
-               " ('is_active', '=', True),"
-               " ('document_type', '=', "
-               "'movement_of_goods')]",
+               " ('is_active', '=', True)]",
         help='Serie a utilizar na criacao de '
-             'Guias de Transporte no Wisedat.',
+             'encomendas ECL no Wisedat.',
     )
     last_sync_series_date = fields.Datetime(
         string='Ultima Sync Series',
@@ -1062,26 +1060,6 @@ class WisedatConfig(models.Model):
 
     # ── Series documentais ───────────────────
 
-    # Map Wisedat document_type values to local
-    WISEDAT_DOCTYPE_MAP = {
-        'MovementOfGoods': 'movement_of_goods',
-        'movement_of_goods': 'movement_of_goods',
-        'movementofgoods': 'movement_of_goods',
-        'SalesInvoice': 'sales_invoice',
-        'sales_invoice': 'sales_invoice',
-        'salesinvoice': 'sales_invoice',
-        'CreditNote': 'credit_note',
-        'credit_note': 'credit_note',
-        'creditnote': 'credit_note',
-        'DebitNote': 'debit_note',
-        'debit_note': 'debit_note',
-        'debitnote': 'debit_note',
-        'Receipt': 'receipt',
-        'receipt': 'receipt',
-        'ProForma': 'proforma',
-        'proforma': 'proforma',
-    }
-
     def _sync_series(self):
         """Fetch series from Wisedat GET /series
         and create/update local records."""
@@ -1125,12 +1103,6 @@ class WisedatConfig(models.Model):
             wisedat_id = str(s.get('id', ''))
             if not wisedat_id:
                 continue
-            raw_doc_type = str(
-                s.get('document_type', '')
-            )
-            mapped_type = self.WISEDAT_DOCTYPE_MAP.get(
-                raw_doc_type, 'other'
-            )
             vals = {
                 'wisedat_id': wisedat_id,
                 'name': str(
@@ -1140,8 +1112,6 @@ class WisedatConfig(models.Model):
                 'description': str(
                     s.get('description', '')
                 ),
-                'document_type': mapped_type,
-                'wisedat_document_type': raw_doc_type,
                 'is_active': bool(
                     s.get('active', True)
                 ),
@@ -1167,11 +1137,11 @@ class WisedatConfig(models.Model):
             removed.write({'is_active': False})
         # Clear selection if chosen series was
         # deactivated
-        if (self.transport_guide_series_id
+        if (self.order_series_id
                 and not
-                self.transport_guide_series_id
+                self.order_series_id
                 .is_active):
-            self.transport_guide_series_id = False
+            self.order_series_id = False
         self.last_sync_series_date = (
             fields.Datetime.now()
         )
@@ -1198,20 +1168,20 @@ class WisedatConfig(models.Model):
             },
         }
 
-    def _validate_transport_guide_series(self):
+    def _validate_order_series(self):
         """Validate that a series is configured
         and active before creating a transport
         guide. Returns the series wisedat_id."""
         self.ensure_one()
-        if not self.transport_guide_series_id:
+        if not self.order_series_id:
             raise UserError(
-                'Serie para Guia de Transporte nao '
+                'Serie para encomendas nao '
                 'configurada.\n'
                 'Aceda a Configuracoes > Wisedat e '
                 'seleccione uma serie na aba '
                 '"Series Documentais".'
             )
-        series = self.transport_guide_series_id
+        series = self.order_series_id
         if not series.is_active:
             raise UserError(
                 f'A serie "{series.display_name}" '
@@ -1222,9 +1192,9 @@ class WisedatConfig(models.Model):
             )
         return series.wisedat_id
 
-    # ── Guia transporte ──────────────────────
+    # ── Encomenda ECL ────────────────────────
 
-    def _create_wisedat_transport_guide(
+    def _create_wisedat_order(
         self, picking_id
     ):
         picking = self.env[
@@ -1240,7 +1210,7 @@ class WisedatConfig(models.Model):
             return None
         # Validate series is configured
         series_id = (
-            self._validate_transport_guide_series()
+            self._validate_order_series()
         )
         wisedat_warehouse = self._get_warehouse_code(
             picking.picking_type_id.warehouse_id.id
@@ -1313,7 +1283,7 @@ class WisedatConfig(models.Model):
         }
         try:
             response = self._api_call_with_retry(
-                'POST', '/movementofgoods',
+                'POST', '/orders',
                 payload
             )
             wisedat_doc_id = response.get('id')
@@ -1321,19 +1291,19 @@ class WisedatConfig(models.Model):
                 wisedat_doc_id
             )
             series_name = (
-                self.transport_guide_series_id
+                self.order_series_id
                 .display_name
             )
             picking.message_post(
                 body=(
-                    f'Guia Wisedat: {wisedat_doc_id}'
+                    f'Encomenda ECL Wisedat: {wisedat_doc_id}'
                     f' (Serie: {series_name})'
                 ),
             )
             return wisedat_doc_id
         except Exception as e:
             _logger.error(
-                'Erro Guia Wisedat: %s', e
+                'Erro Encomenda Wisedat: %s', e
             )
             raise
 

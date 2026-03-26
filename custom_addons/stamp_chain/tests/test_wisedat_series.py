@@ -20,7 +20,7 @@ class TestWisedatSeries(TransactionCase):
             'api_password': 'test-pass',
             'sync_customers': True,
             'sync_products': True,
-            'sync_transport_guides': True,
+            'sync_orders': True,
         })
         cls.wh = cls.env['stock.warehouse'].search(
             [], limit=1
@@ -49,23 +49,18 @@ class TestWisedatSeries(TransactionCase):
                     'name': 'GT2026',
                     'description': 'Guias 2026',
                     'active': True,
-                    'document_type':
-                        'MovementOfGoods',
                 },
                 {
                     'id': 2,
                     'name': 'FT2026',
                     'description': 'Facturas 2026',
                     'active': True,
-                    'document_type': 'SalesInvoice',
                 },
                 {
                     'id': 3,
                     'name': 'GT2025',
                     'description': 'Guias 2025',
                     'active': False,
-                    'document_type':
-                        'MovementOfGoods',
                 },
             ],
         }
@@ -78,16 +73,12 @@ class TestWisedatSeries(TransactionCase):
         ])
         self.assertEqual(len(series), 3)
         gt2026 = series.filtered(
-            lambda s: s.wisedat_id == 1
+            lambda s: s.wisedat_id == '1'
         )
         self.assertEqual(gt2026.name, 'GT2026')
-        self.assertEqual(
-            gt2026.document_type,
-            'movement_of_goods'
-        )
         self.assertTrue(gt2026.is_active)
         gt2025 = series.filtered(
-            lambda s: s.wisedat_id == 3
+            lambda s: s.wisedat_id == '3'
         )
         self.assertFalse(gt2025.is_active)
 
@@ -101,10 +92,9 @@ class TestWisedatSeries(TransactionCase):
     ):
         """Sync updates existing series records."""
         self.env['tobacco.wisedat.series'].create({
-            'wisedat_id': 10,
+            'wisedat_id': '10',
             'name': 'OLD',
             'description': 'Old Name',
-            'document_type': 'movement_of_goods',
             'is_active': True,
             'wisedat_config_id': self.config.id,
         })
@@ -114,15 +104,13 @@ class TestWisedatSeries(TransactionCase):
                 'name': 'GT2026-V2',
                 'description': 'Guias 2026 v2',
                 'active': True,
-                'document_type':
-                    'MovementOfGoods',
             }],
         }
         self.config._sync_series()
         rec = self.env[
             'tobacco.wisedat.series'
         ].search([
-            ('wisedat_id', '=', 10),
+            ('wisedat_id', '=', '10'),
             ('wisedat_config_id', '=',
              self.config.id),
         ])
@@ -140,9 +128,8 @@ class TestWisedatSeries(TransactionCase):
         """Series removed from API are
         deactivated locally."""
         self.env['tobacco.wisedat.series'].create({
-            'wisedat_id': 20,
+            'wisedat_id': '20',
             'name': 'REMOVED',
-            'document_type': 'movement_of_goods',
             'is_active': True,
             'wisedat_config_id': self.config.id,
         })
@@ -152,15 +139,13 @@ class TestWisedatSeries(TransactionCase):
                 'name': 'NEW',
                 'description': 'New only',
                 'active': True,
-                'document_type':
-                    'MovementOfGoods',
             }],
         }
         self.config._sync_series()
         removed = self.env[
             'tobacco.wisedat.series'
         ].search([
-            ('wisedat_id', '=', 20),
+            ('wisedat_id', '=', '20'),
             ('wisedat_config_id', '=',
              self.config.id),
         ])
@@ -171,11 +156,11 @@ class TestWisedatSeries(TransactionCase):
     ):
         """Validation raises if no series is
         configured."""
-        self.config.transport_guide_series_id = (
+        self.config.order_series_id = (
             False
         )
         with self.assertRaises(UserError):
-            self.config._validate_transport_guide_series()
+            self.config._validate_order_series()
 
     def test_validate_series_inactive_raises(
         self,
@@ -185,17 +170,16 @@ class TestWisedatSeries(TransactionCase):
         series = self.env[
             'tobacco.wisedat.series'
         ].create({
-            'wisedat_id': 30,
+            'wisedat_id': '30',
             'name': 'INACTIVE',
-            'document_type': 'movement_of_goods',
             'is_active': False,
             'wisedat_config_id': self.config.id,
         })
-        self.config.transport_guide_series_id = (
+        self.config.order_series_id = (
             series.id
         )
         with self.assertRaises(UserError):
-            self.config._validate_transport_guide_series()
+            self.config._validate_order_series()
 
     def test_validate_series_active_returns_id(
         self,
@@ -205,18 +189,17 @@ class TestWisedatSeries(TransactionCase):
         series = self.env[
             'tobacco.wisedat.series'
         ].create({
-            'wisedat_id': 40,
+            'wisedat_id': '40',
             'name': 'ACTIVE',
-            'document_type': 'movement_of_goods',
             'is_active': True,
             'wisedat_config_id': self.config.id,
         })
-        self.config.transport_guide_series_id = (
+        self.config.order_series_id = (
             series.id
         )
         result = (
             self.config
-            ._validate_transport_guide_series()
+            ._validate_order_series()
         )
         self.assertEqual(result, 40)
 
@@ -261,18 +244,15 @@ class TestWisedatSeries(TransactionCase):
         """Duplicate wisedat_id per config is
         blocked."""
         self.env['tobacco.wisedat.series'].create({
-            'wisedat_id': 50,
+            'wisedat_id': '50',
             'name': 'FIRST',
-            'document_type': 'movement_of_goods',
             'is_active': True,
             'wisedat_config_id': self.config.id,
         })
         with self.assertRaises(Exception):
             self.env['tobacco.wisedat.series'].create({
-                'wisedat_id': 50,
+                'wisedat_id': '50',
                 'name': 'DUPLICATE',
-                'document_type':
-                    'movement_of_goods',
                 'is_active': True,
                 'wisedat_config_id': self.config.id,
             })

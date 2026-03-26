@@ -22,22 +22,6 @@ class WisedatSeries(models.Model):
     description = fields.Char(
         string='Descricao',
     )
-    document_type = fields.Selection([
-        ('movement_of_goods', 'Guia de Transporte'),
-        ('sales_invoice', 'Factura'),
-        ('credit_note', 'Nota de Credito'),
-        ('debit_note', 'Nota de Debito'),
-        ('receipt', 'Recibo'),
-        ('proforma', 'Pro-Forma'),
-        ('other', 'Outro'),
-    ], string='Tipo de Documento',
-       index=True,
-    )
-    wisedat_document_type = fields.Char(
-        string='Tipo Documento (Wisedat)',
-        help='Valor original do campo document_type '
-             'retornado pela API Wisedat',
-    )
     is_active = fields.Boolean(
         string='Activa no Wisedat',
         default=True,
