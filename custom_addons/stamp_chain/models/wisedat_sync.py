@@ -65,8 +65,10 @@ class WisedatConfig(models.Model):
         default=True,
     )
     sync_transport_guides = fields.Boolean(
-        string='Sincronizar Facturas',
+        string='Criar Guias Transporte',
         default=True,
+        help='Cria guia de transporte no Wisedat '
+             'ao validar expedicao (POST /movementofgoods)',
     )
     sync_frequency = fields.Selection([
         ('realtime', 'Tempo Real'),
