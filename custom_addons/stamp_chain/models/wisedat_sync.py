@@ -101,6 +101,10 @@ class WisedatConfig(models.Model):
         default=0, readonly=True)
     sync_errors = fields.Integer(
         default=0, readonly=True)
+    sync_total_records = fields.Integer(
+        default=0, readonly=True)
+    sync_percent = fields.Integer(
+        default=0, readonly=True)
     last_sync_customers = fields.Integer(
         default=0, readonly=True)
     last_sync_errors = fields.Integer(
@@ -117,6 +121,10 @@ class WisedatConfig(models.Model):
         default=0, readonly=True)
     product_sync_errors = fields.Integer(
         default=0, readonly=True)
+    product_sync_total_records = fields.Integer(
+        default=0, readonly=True)
+    product_sync_percent = fields.Integer(
+        default=0, readonly=True)
     last_sync_products = fields.Integer(
         default=0, readonly=True)
 
@@ -128,6 +136,10 @@ class WisedatConfig(models.Model):
     invoice_sync_progress = fields.Integer(
         default=0, readonly=True)
     invoice_sync_errors = fields.Integer(
+        default=0, readonly=True)
+    invoice_sync_total_records = fields.Integer(
+        default=0, readonly=True)
+    invoice_sync_percent = fields.Integer(
         default=0, readonly=True)
     last_sync_invoices = fields.Integer(
         default=0, readonly=True)
@@ -549,8 +561,12 @@ class WisedatConfig(models.Model):
                 )
                 return False
             if page == start_page:
+                total_records = pagination.get(
+                    'number_items', 0
+                )
                 self.write({
                     'sync_total_pages': total_pages,
+                    'sync_total_records': total_records,
                 })
                 self.env.cr.commit()
             # Bulk search
@@ -595,16 +611,22 @@ class WisedatConfig(models.Model):
             if create_vals_list:
                 Partner.create(create_vals_list)
             self.env.cr.commit()
+            new_progress = (
+                (self.sync_progress or 0) + synced
+            )
+            total_rec = self.sync_total_records or 1
+            pct = min(
+                int(new_progress * 100 / total_rec),
+                100
+            ) if total_rec > 0 else 0
             self.write({
                 'sync_last_page': page,
-                'sync_progress': (
-                    (self.sync_progress or 0)
-                    + synced
-                ),
+                'sync_progress': new_progress,
                 'sync_errors': (
                     (self.sync_errors or 0)
                     + errors
                 ),
+                'sync_percent': pct,
             })
             self.env.cr.commit()
             self.env.invalidate_all()
@@ -631,6 +653,8 @@ class WisedatConfig(models.Model):
             'sync_total_pages': 0,
             'sync_progress': 0,
             'sync_errors': 0,
+            'sync_total_records': 0,
+            'sync_percent': 0,
             'last_sync_date': fields.Datetime.now(),
             'sync_status': (
                 'ok' if total_errors == 0
@@ -763,9 +787,14 @@ class WisedatConfig(models.Model):
                 )
                 return False
             if page == start_page:
+                total_records = pagination.get(
+                    'number_items', 0
+                )
                 self.write({
                     'product_sync_total_pages':
                         total_pages,
+                    'product_sync_total_records':
+                        total_records,
                 })
                 self.env.cr.commit()
             wisedat_ids = [
@@ -816,16 +845,25 @@ class WisedatConfig(models.Model):
             if create_vals_list:
                 Product.create(create_vals_list)
             self.env.cr.commit()
+            new_progress = (
+                (self.product_sync_progress or 0)
+                + synced
+            )
+            total_rec = (
+                self.product_sync_total_records or 1
+            )
+            pct = min(
+                int(new_progress * 100 / total_rec),
+                100
+            ) if total_rec > 0 else 0
             self.write({
                 'product_sync_last_page': page,
-                'product_sync_progress': (
-                    (self.product_sync_progress
-                     or 0) + synced
-                ),
+                'product_sync_progress': new_progress,
                 'product_sync_errors': (
                     (self.product_sync_errors
                      or 0) + errors
                 ),
+                'product_sync_percent': pct,
             })
             self.env.cr.commit()
             self.env.invalidate_all()
@@ -854,6 +892,8 @@ class WisedatConfig(models.Model):
             'product_sync_total_pages': 0,
             'product_sync_progress': 0,
             'product_sync_errors': 0,
+            'product_sync_total_records': 0,
+            'product_sync_percent': 0,
             'last_sync_products': total_synced,
         })
         self.env.cr.commit()
@@ -1024,9 +1064,14 @@ class WisedatConfig(models.Model):
                 )
                 return False
             if page == start_page:
+                total_records = pagination.get(
+                    'number_items', 0
+                )
                 self.write({
                     'invoice_sync_total_pages':
                         total_pages,
+                    'invoice_sync_total_records':
+                        total_records,
                 })
                 self.env.cr.commit()
             wisedat_ids = [
@@ -1106,16 +1151,25 @@ class WisedatConfig(models.Model):
             if create_vals_list:
                 Invoice.create(create_vals_list)
             self.env.cr.commit()
+            new_progress = (
+                (self.invoice_sync_progress or 0)
+                + synced
+            )
+            total_rec = (
+                self.invoice_sync_total_records or 1
+            )
+            pct = min(
+                int(new_progress * 100 / total_rec),
+                100
+            ) if total_rec > 0 else 0
             self.write({
                 'invoice_sync_last_page': page,
-                'invoice_sync_progress': (
-                    (self.invoice_sync_progress
-                     or 0) + synced
-                ),
+                'invoice_sync_progress': new_progress,
                 'invoice_sync_errors': (
                     (self.invoice_sync_errors
                      or 0) + errors
                 ),
+                'invoice_sync_percent': pct,
             })
             self.env.cr.commit()
             self.env.invalidate_all()
@@ -1144,6 +1198,8 @@ class WisedatConfig(models.Model):
             'invoice_sync_total_pages': 0,
             'invoice_sync_progress': 0,
             'invoice_sync_errors': 0,
+            'invoice_sync_total_records': 0,
+            'invoice_sync_percent': 0,
             'last_sync_invoices': total_synced,
         })
         self.env.cr.commit()
@@ -1434,12 +1490,18 @@ class WisedatConfig(models.Model):
             'sync_last_page': 0,
             'sync_progress': 0,
             'sync_errors': 0,
+            'sync_total_records': 0,
+            'sync_percent': 0,
             'product_sync_last_page': 0,
             'product_sync_progress': 0,
             'product_sync_errors': 0,
+            'product_sync_total_records': 0,
+            'product_sync_percent': 0,
             'invoice_sync_last_page': 0,
             'invoice_sync_progress': 0,
             'invoice_sync_errors': 0,
+            'invoice_sync_total_records': 0,
+            'invoice_sync_percent': 0,
         })
         self.env.cr.commit()
         try:
@@ -1481,12 +1543,18 @@ class WisedatConfig(models.Model):
             'sync_last_page': 0,
             'sync_progress': 0,
             'sync_errors': 0,
+            'sync_total_records': 0,
+            'sync_percent': 0,
             'product_sync_last_page': 0,
             'product_sync_progress': 0,
             'product_sync_errors': 0,
+            'product_sync_total_records': 0,
+            'product_sync_percent': 0,
             'invoice_sync_last_page': 0,
             'invoice_sync_progress': 0,
             'invoice_sync_errors': 0,
+            'invoice_sync_total_records': 0,
+            'invoice_sync_percent': 0,
         })
         cron = self.env.ref(
             'stamp_chain.ir_cron_wisedat_sync'

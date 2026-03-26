@@ -385,3 +385,10 @@
 /* ── Botao handheld verde ────────────────── */
 .sc-btn-handheld { background: var(--sc-green, #1D9E75) !important; color: white !important; border-color: var(--sc-green, #1D9E75) !important; }
 .sc-btn-handheld:hover { background: var(--sc-green-dark, #085041) !important; }
+
+/* ── Sync phase label ────────────────────── */
+.sc-sync-phase-label { font-weight: 400; font-size: 12px; color: var(--color-text-secondary, #6c757d); text-transform: capitalize; }
+
+/* ── Barra indeterminada (categorias/stock) ── */
+.sc-sync-bar-indeterminate { width: 30%; animation: sc-indeterminate 1.5s ease-in-out infinite; }
+@keyframes sc-indeterminate { 0% { margin-left: 0; } 50% { margin-left: 70%; } 100% { margin-left: 0; } }
