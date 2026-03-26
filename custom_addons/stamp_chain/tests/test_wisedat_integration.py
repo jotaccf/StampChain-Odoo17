@@ -117,13 +117,13 @@ class TestWisedatIntegration(TransactionCase):
     ):
         partner = self.env['res.partner'].create({
             'name': 'Por NIF',
-            'vat': 'PT500000001',
+            'vat': 'PT999999990',
         })
         mock_api.return_value = {
             'customers': [{
                 'id': 8003,
                 'name': 'Por NIF',
-                'tax_id': 'PT500000001',
+                'tax_id': 'PT999999990',
             }],
             'pagination': {
                 'number_pages': 1,
