@@ -501,13 +501,13 @@ class WisedatConfig(models.Model):
     def _fetch_customer_entity_type(
         self, wisedat_customer_id
     ):
-        """Faz GET /customers/{id} para obter
+        """Faz GET /customers?id={id} para obter
         o entity_type de um cliente individual.
         Retorna o codigo (str) ou False."""
         try:
             data = self._api_call_with_retry(
                 'GET',
-                f'/customers/{wisedat_customer_id}'
+                f'/customers?id={wisedat_customer_id}'
             )
             # Normalizar: pode vir como dict
             # directo ou dentro de 'customer'
