@@ -8,7 +8,7 @@ class WisedatSeries(models.Model):
     _order = 'wisedat_id'
     _rec_name = 'display_name'
 
-    wisedat_id = fields.Integer(
+    wisedat_id = fields.Char(
         string='ID Wisedat',
         required=True,
         index=True,

@@ -1122,7 +1122,7 @@ class WisedatConfig(models.Model):
         synced_ids = set()
         create_vals_list = []
         for s in series_list:
-            wisedat_id = s.get('id')
+            wisedat_id = str(s.get('id', ''))
             if not wisedat_id:
                 continue
             raw_doc_type = str(
