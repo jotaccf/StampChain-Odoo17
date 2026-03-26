@@ -10,7 +10,7 @@
                   string="Testar Ligacao"
                   type="object"
                   class="btn-primary sc-btn-handheld"/>
-          <button name="action_full_sync"
+          <button name="action_full_sync_background"
                   string="Sync Completa"
                   type="object"
                   class="btn-secondary"/>

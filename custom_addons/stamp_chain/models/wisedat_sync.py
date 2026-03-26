@@ -3,6 +3,7 @@ from odoo import models, fields
 from odoo.exceptions import UserError
 import requests
 import logging
+import threading
 import base64
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_v1_5
@@ -611,3 +612,105 @@ class WisedatConfig(models.Model):
                     'type': 'danger',
                 },
             }
+
+    # — Cron job sync —
+
+    @classmethod
+    def _cron_sync(cls):
+        """Chamado pelo cron job. Nao retorna
+        notificacao. Protege contra ficar preso
+        em 'syncing' se falhar."""
+        from odoo import api, SUPERUSER_ID
+        from odoo.modules.registry import Registry
+        db_name = cls.pool.db_name
+        registry = Registry(db_name)
+        with registry.cursor() as cr:
+            env = api.Environment(
+                cr, SUPERUSER_ID, {}
+            )
+            configs = env[
+                'tobacco.wisedat.config'
+            ].search([('active', '=', True)])
+            for config in configs:
+                try:
+                    config.sync_status = 'syncing'
+                    cr.commit()
+                    config.action_full_sync()
+                    cr.commit()
+                except Exception as e:
+                    cr.rollback()
+                    _logger.error(
+                        'Cron sync falhou para %s: %s',
+                        config.name, e
+                    )
+                    try:
+                        config.sync_status = 'error'
+                        cr.commit()
+                    except Exception:
+                        cr.rollback()
+
+    # — Background sync (botao UI) —
+
+    def action_full_sync_background(self):
+        """Lanca sync em thread separado.
+        Nao bloqueia o browser."""
+        self.ensure_one()
+        record_id = self.id
+        db_name = self.env.cr.dbname
+        thread = threading.Thread(
+            target=self._run_sync_thread,
+            args=(db_name, record_id),
+        )
+        thread.daemon = True
+        thread.start()
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': 'StampChain',
+                'message': (
+                    'Sincronizacao iniciada '
+                    'em background. Consulta '
+                    'o estado na configuracao.'
+                ),
+                'type': 'success',
+            },
+        }
+
+    @staticmethod
+    def _run_sync_thread(db_name, record_id):
+        """Executa sync num thread separado
+        com cursor proprio. try/finally
+        garante que cursor fecha sempre."""
+        from odoo import api, SUPERUSER_ID
+        from odoo.modules.registry import Registry
+        registry = Registry(db_name)
+        cr = registry.cursor()
+        try:
+            env = api.Environment(
+                cr, SUPERUSER_ID, {}
+            )
+            config = env[
+                'tobacco.wisedat.config'
+            ].browse(record_id)
+            if config.exists():
+                config.action_full_sync()
+                cr.commit()
+        except Exception as e:
+            cr.rollback()
+            _logger.error(
+                'Erro sync background: %s', e
+            )
+            try:
+                env = api.Environment(
+                    cr, SUPERUSER_ID, {}
+                )
+                config = env[
+                    'tobacco.wisedat.config'
+                ].browse(record_id)
+                config.sync_status = 'error'
+                cr.commit()
+            except Exception:
+                cr.rollback()
+        finally:
+            cr.close()
