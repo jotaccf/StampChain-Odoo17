@@ -1549,7 +1549,10 @@ class WisedatConfig(models.Model):
         cron = self.env.ref(
             'stamp_chain.ir_cron_wisedat_sync'
         )
-        cron.nextcall = fields.Datetime.now()
+        cron.write({
+            'active': True,
+            'nextcall': fields.Datetime.now(),
+        })
         return {
             'type': 'ir.actions.client',
             'tag': 'display_notification',
@@ -1559,6 +1562,40 @@ class WisedatConfig(models.Model):
                     'Sincronizacao agendada.'
                 ),
                 'type': 'success',
+            },
+        }
+
+    def action_reset_sync_status(self):
+        """Reset manual do estado de sync.
+        Permite desbloquear quando fica preso
+        em 'syncing' por erro ou timeout."""
+        self.ensure_one()
+        self.write({
+            'sync_status': 'error',
+            'sync_phase': 'idle',
+            'sync_phase_started': False,
+            'sync_stop_requested': False,
+            'sync_last_page': 0,
+            'sync_progress': 0,
+            'sync_errors': 0,
+            'sync_total_records': 0,
+            'sync_percent': 0,
+            'product_sync_last_page': 0,
+            'product_sync_progress': 0,
+            'product_sync_errors': 0,
+            'product_sync_total_records': 0,
+            'product_sync_percent': 0,
+        })
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': 'StampChain',
+                'message': (
+                    'Estado de sync resetado. '
+                    'Pode relançar a sync.'
+                ),
+                'type': 'warning',
             },
         }
 
@@ -1739,6 +1776,21 @@ class WisedatConfig(models.Model):
                     config.env.cr.commit()
                 except Exception:
                     config.env.cr.rollback()
+        # Desactivar cron quando nao ha mais
+        # trabalho (padrao liga/desliga)
+        all_idle = all(
+            c.sync_phase == 'idle'
+            for c in configs
+        )
+        if all_idle:
+            try:
+                cron = self.env.ref(
+                    'stamp_chain.ir_cron_wisedat_sync'
+                )
+                cron.active = False
+                self.env.cr.commit()
+            except Exception:
+                pass
 
     def _reschedule_cron(self, minutes=2):
         cron = self.env.ref(
