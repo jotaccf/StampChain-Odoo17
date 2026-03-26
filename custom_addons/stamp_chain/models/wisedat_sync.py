@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-from odoo import models, fields
+from odoo import models, fields, api
 from odoo.exceptions import UserError
 import requests
 import logging
-import threading
+import time
 import base64
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_v1_5
@@ -14,6 +14,12 @@ _logger = logging.getLogger(__name__)
 class WisedatConfig(models.Model):
     _name = 'tobacco.wisedat.config'
     _description = 'Configuracao Integracao Wisedat'
+
+    # — Constantes sync —
+    SYNC_BATCH_PAGES = 10
+    API_PAGE_SIZE = 200
+    MAX_RETRIES = 3
+    RETRY_BACKOFF = 2.0
 
     name = fields.Char(
         string='Nome',
@@ -81,7 +87,31 @@ class WisedatConfig(models.Model):
         default=True,
     )
 
+    # — Campos de progresso sync —
+    sync_last_page = fields.Integer(
+        string='Ultima Pagina Sincronizada',
+        default=0,
+        readonly=True,
+    )
+    sync_total_pages = fields.Integer(
+        string='Total Paginas',
+        default=0,
+        readonly=True,
+    )
+    sync_progress = fields.Integer(
+        string='Clientes Sincronizados',
+        default=0,
+        readonly=True,
+    )
+    sync_errors = fields.Integer(
+        string='Erros Sync',
+        default=0,
+        readonly=True,
+    )
+
     _jwt_tokens = {}
+
+    # ── Autenticacao RSA ─────────────────────
 
     def _authenticate(self):
         try:
@@ -96,7 +126,6 @@ class WisedatConfig(models.Model):
             )
             status_r.raise_for_status()
             data = status_r.json()
-
             pub_key_data = data['PublicKey']
             modulus = int.from_bytes(
                 base64.b64decode(pub_key_data[0]),
@@ -110,7 +139,6 @@ class WisedatConfig(models.Model):
                 (modulus, exponent)
             )
             cipher = PKCS1_v1_5.new(pub_key)
-
             credentials = (
                 f'{self.api_key}'
                 f';{self.api_username}'
@@ -122,7 +150,6 @@ class WisedatConfig(models.Model):
             auth_header = base64.b64encode(
                 encrypted
             ).decode('utf-8')
-
             login_r = requests.post(
                 f'{self.api_url}/authentication/login',
                 headers={
@@ -167,28 +194,43 @@ class WisedatConfig(models.Model):
             'Authorization': f'Bearer {token}',
         }
 
+    # ── Connection pooling ───────────────────
+
+    def _get_session(self):
+        """requests.Session com connection pooling."""
+        if not hasattr(self, '_http_session'):
+            self._http_session = None
+        if self._http_session is None:
+            session = requests.Session()
+            adapter = requests.adapters.HTTPAdapter(
+                pool_connections=1,
+                pool_maxsize=1,
+                max_retries=0,
+            )
+            session.mount('http://', adapter)
+            session.mount('https://', adapter)
+            self._http_session = session
+        return self._http_session
+
+    # ── API call com retry ───────────────────
+
     def _api_call(self, method, endpoint,
                   payload=None):
+        """API call basico (sem retry)."""
         url = f'{self.api_url}{endpoint}'
         try:
             response = requests.request(
-                method,
-                url,
+                method, url,
                 headers=self._get_headers(),
                 json=payload,
                 timeout=30,
             )
             if response.status_code == 401:
-                _logger.info(
-                    'Wisedat: token expirado, '
-                    're-auth.'
-                )
                 WisedatConfig._jwt_tokens.pop(
                     self.id, None
                 )
                 response = requests.request(
-                    method,
-                    url,
+                    method, url,
                     headers=self._get_headers(),
                     json=payload,
                     timeout=30,
@@ -203,6 +245,59 @@ class WisedatConfig(models.Model):
                 f'Erro na comunicacao com Wisedat: '
                 f'{str(e)}'
             )
+
+    def _api_call_with_retry(self, method,
+                              endpoint,
+                              payload=None):
+        """API call com retry e session pooling."""
+        session = self._get_session()
+        url = f'{self.api_url}{endpoint}'
+        for attempt in range(self.MAX_RETRIES):
+            try:
+                response = session.request(
+                    method, url,
+                    headers=self._get_headers(),
+                    json=payload,
+                    timeout=30,
+                )
+                if response.status_code == 401:
+                    WisedatConfig._jwt_tokens.pop(
+                        self.id, None
+                    )
+                    response = session.request(
+                        method, url,
+                        headers=self._get_headers(),
+                        json=payload,
+                        timeout=30,
+                    )
+                response.raise_for_status()
+                return response.json()
+            except requests.exceptions.RequestException as e:
+                if attempt < self.MAX_RETRIES - 1:
+                    wait = (
+                        self.RETRY_BACKOFF
+                        * (attempt + 1)
+                    )
+                    _logger.warning(
+                        'Wisedat retry %d/%d: %s '
+                        '(wait %.1fs)',
+                        attempt + 1,
+                        self.MAX_RETRIES, e, wait
+                    )
+                    time.sleep(wait)
+                else:
+                    _logger.error(
+                        'Wisedat failed after %d '
+                        'retries: %s',
+                        self.MAX_RETRIES, e
+                    )
+                    raise UserError(
+                        f'Erro Wisedat apos '
+                        f'{self.MAX_RETRIES} '
+                        f'tentativas: {e}'
+                    )
+
+    # ── Armazens ─────────────────────────────
 
     warehouse_mapping_ids = fields.One2many(
         'tobacco.warehouse.config',
@@ -222,88 +317,15 @@ class WisedatConfig(models.Model):
             )
         return mapping[0].wisedat_warehouse_code
 
-    def _sync_customers(self, limit=50,
-                        max_pages=None):
-        _logger.info(
-            'StampChain: sync clientes Wisedat->Odoo'
-        )
-        try:
-            page = 1
-            synced = errors = 0
-            while True:
-                response = self._api_call(
-                    'GET',
-                    f'/customers?limit={limit}'
-                    f'&page={page}'
-                )
-                customers = (
-                    response.get('customers', [])
-                    if isinstance(response, dict)
-                    else response
-                    if isinstance(response, list)
-                    else []
-                )
-                pagination = (
-                    response.get('pagination', {})
-                    if isinstance(response, dict)
-                    else {}
-                )
-                total_pages = pagination.get(
-                    'number_pages', 1
-                )
-                for cust in customers:
-                    try:
-                        self._sync_single_customer(
-                            cust
-                        )
-                        synced += 1
-                    except Exception as e:
-                        errors += 1
-                        _logger.error(
-                            'Erro sync cliente %s: %s',
-                            cust.get('id'), e
-                        )
-                _logger.info(
-                    'StampChain: clientes pagina '
-                    '%d/%d — %d sincronizados',
-                    page, total_pages, synced
-                )
-                if page >= total_pages:
-                    break
-                if max_pages and page >= max_pages:
-                    _logger.info(
-                        'StampChain: limite de '
-                        '%d paginas atingido.',
-                        max_pages
-                    )
-                    break
-                page += 1
-            self.write({
-                'last_sync_date':
-                    fields.Datetime.now(),
-                'sync_status':
-                    'ok' if errors == 0
-                    else 'error',
-            })
-            return synced, errors
-        except UserError:
-            self.sync_status = 'error'
-            raise
+    # ── Sync clientes (chunked) ──────────────
 
-    def _sync_single_customer(self, cust_data):
-        Partner = self.env['res.partner']
-        partner = Partner.search([
-            ('wisedat_id', '=', cust_data.get('id'))
-        ], limit=1)
-        if not partner and cust_data.get('tax_id'):
-            partner = Partner.search([
-                ('vat', '=', cust_data['tax_id'])
-            ], limit=1)
+    def _prepare_customer_vals(self, cust_data):
+        """Prepara vals para um cliente."""
         billing = (
             cust_data.get('billing_address', {})
             or {}
         )
-        vals = {
+        return {
             'name': cust_data.get('name', ''),
             'vat': cust_data.get('tax_id'),
             'email': cust_data.get('email'),
@@ -317,10 +339,194 @@ class WisedatConfig(models.Model):
             'city': billing.get('city', ''),
             'zip': billing.get('postal_code', ''),
         }
+
+    def _sync_customers_batch(self):
+        """Processa BATCH_PAGES paginas.
+        Retorna True se ha mais trabalho."""
+        Partner = self.env['res.partner']
+        start_page = (self.sync_last_page or 0) + 1
+        synced = errors = 0
+
+        for page_offset in range(
+            self.SYNC_BATCH_PAGES
+        ):
+            page = start_page + page_offset
+            try:
+                response = (
+                    self._api_call_with_retry(
+                        'GET',
+                        f'/customers?limit='
+                        f'{self.API_PAGE_SIZE}'
+                        f'&page={page}'
+                    )
+                )
+            except Exception as e:
+                _logger.error(
+                    'API error pagina %d: %s',
+                    page, e
+                )
+                self.sync_status = 'error'
+                self.env.cr.commit()
+                return False
+
+            customers = (
+                response.get('customers', [])
+                if isinstance(response, dict)
+                else response
+                if isinstance(response, list)
+                else []
+            )
+            pagination = (
+                response.get('pagination', {})
+                if isinstance(response, dict)
+                else {}
+            )
+            total_pages = pagination.get(
+                'number_pages', 1
+            )
+
+            if not customers:
+                self._finish_customer_sync(
+                    synced, errors
+                )
+                return False
+
+            if page == start_page:
+                self.write({
+                    'sync_total_pages': total_pages,
+                    'sync_status': 'syncing',
+                })
+                self.env.cr.commit()
+
+            # C3: Bulk search
+            wisedat_ids = [
+                c.get('id') for c in customers
+                if c.get('id')
+            ]
+            existing = Partner.search([
+                ('wisedat_id', 'in', wisedat_ids)
+            ])
+            existing_map = {
+                p.wisedat_id: p for p in existing
+            }
+
+            # C4: Batch create
+            create_vals_list = []
+            for cust in customers:
+                try:
+                    vals = (
+                        self._prepare_customer_vals(
+                            cust
+                        )
+                    )
+                    partner = existing_map.get(
+                        cust.get('id')
+                    )
+                    if (not partner
+                            and cust.get('tax_id')):
+                        partner = Partner.search([
+                            ('vat', '=',
+                             cust['tax_id'])
+                        ], limit=1)
+                    if partner:
+                        partner.write(vals)
+                    else:
+                        create_vals_list.append(vals)
+                    synced += 1
+                except Exception as e:
+                    errors += 1
+                    _logger.error(
+                        'Erro cliente %s: %s',
+                        cust.get('id'), e
+                    )
+
+            if create_vals_list:
+                Partner.create(create_vals_list)
+
+            # C1: Commit apos cada pagina
+            self.env.cr.commit()
+
+            # C8: Checkpoint
+            self.write({
+                'sync_last_page': page,
+                'sync_progress': (
+                    (self.sync_progress or 0)
+                    + synced
+                ),
+                'sync_errors': (
+                    (self.sync_errors or 0)
+                    + errors
+                ),
+            })
+            self.env.cr.commit()
+
+            # C2: Limpar cache ORM
+            self.env.invalidate_all()
+
+            _logger.info(
+                'StampChain: clientes pagina '
+                '%d/%d — %d sync, %d erros',
+                page, total_pages, synced, errors
+            )
+
+            synced = errors = 0
+
+            if page >= total_pages:
+                self._finish_customer_sync(0, 0)
+                return False
+
+        return True
+
+    def _finish_customer_sync(self, synced,
+                               errors):
+        """Reset checkpoint e finaliza."""
+        total_synced = (
+            (self.sync_progress or 0) + synced
+        )
+        total_errors = (
+            (self.sync_errors or 0) + errors
+        )
+        self.write({
+            'sync_last_page': 0,
+            'sync_total_pages': 0,
+            'sync_progress': 0,
+            'sync_errors': 0,
+            'last_sync_date': fields.Datetime.now(),
+            'sync_status': (
+                'ok' if total_errors == 0
+                else 'error'
+            ),
+        })
+        self.env.cr.commit()
+        _logger.info(
+            'StampChain: sync clientes completa '
+            '— %d sync, %d erros',
+            total_synced, total_errors
+        )
+
+    # — Legacy (mantido para referencia) —
+    def _sync_single_customer(self, cust_data):
+        vals = self._prepare_customer_vals(
+            cust_data
+        )
+        Partner = self.env['res.partner']
+        partner = Partner.search([
+            ('wisedat_id', '=',
+             cust_data.get('id'))
+        ], limit=1)
+        if not partner and cust_data.get(
+            'tax_id'
+        ):
+            partner = Partner.search([
+                ('vat', '=',
+                 cust_data['tax_id'])
+            ], limit=1)
         if partner:
             partner.write(vals)
         else:
             Partner.create(vals)
+
+    # ── Sync produtos ────────────────────────
 
     def _sync_products(self):
         _logger.info(
@@ -373,6 +579,8 @@ class WisedatConfig(models.Model):
         else:
             Product.create(vals)
 
+    # ── Sync stock ───────────────────────────
+
     def _sync_stock_by_warehouse(self):
         for mapping in self.warehouse_mapping_ids:
             try:
@@ -395,13 +603,11 @@ class WisedatConfig(models.Model):
             except Exception as e:
                 _logger.error(
                     'Erro sync stock armazem %s: %s',
-                    mapping.wisedat_warehouse_code,
-                    e
+                    mapping.wisedat_warehouse_code, e
                 )
 
-    def _update_odoo_stock(
-        self, item_data, warehouse
-    ):
+    def _update_odoo_stock(self, item_data,
+                            warehouse):
         product_code = item_data.get('name')
         stocks = item_data.get('stocks', [])
         if not product_code or not stocks:
@@ -439,6 +645,8 @@ class WisedatConfig(models.Model):
                 'quantity': total_qty,
             })
 
+    # ── Guia de transporte ───────────────────
+
     def _create_wisedat_transport_guide(
         self, picking_id
     ):
@@ -446,21 +654,12 @@ class WisedatConfig(models.Model):
             'stock.picking'
         ].browse(picking_id)
         if not picking.exists():
-            _logger.warning(
-                'Picking %s nao encontrado.',
-                picking_id
-            )
             return None
         sale = self.env['sale.order'].search(
             [('name', '=', picking.origin)],
             limit=1,
         )
         if not sale:
-            _logger.warning(
-                'Encomenda nao encontrada '
-                'para picking %s',
-                picking.name
-            )
             return None
         wisedat_warehouse = self._get_warehouse_code(
             picking.picking_type_id.warehouse_id.id
@@ -475,7 +674,9 @@ class WisedatConfig(models.Model):
                 lines.append({
                     'id': (
                         product.wisedat_id
-                        if hasattr(product, 'wisedat_id')
+                        if hasattr(
+                            product, 'wisedat_id'
+                        )
                         else None
                     ),
                     'description': product.name,
@@ -488,24 +689,19 @@ class WisedatConfig(models.Model):
                     'warehouse': wisedat_warehouse,
                 })
         if not lines:
-            _logger.warning(
-                'Picking %s sem linhas done.',
-                picking.name
-            )
             return None
-
         wisedat_customer_id = (
             sale.partner_id.wisedat_id
-            if hasattr(sale.partner_id, 'wisedat_id')
+            if hasattr(
+                sale.partner_id, 'wisedat_id'
+            )
             else None
         )
         if not wisedat_customer_id:
             raise UserError(
                 f'Cliente {sale.partner_id.name} '
-                f'nao sincronizado com Wisedat. '
-                f'Execute a sincronizacao primeiro.'
+                f'nao sincronizado com Wisedat.'
             )
-
         payload = {
             'customer': wisedat_customer_id,
             'date': str(fields.Date.today()),
@@ -518,8 +714,7 @@ class WisedatConfig(models.Model):
         }
         try:
             response = self._api_call(
-                'POST',
-                '/movementsofgoods',
+                'POST', '/movementsofgoods',
                 payload
             )
             wisedat_doc_id = response.get('id')
@@ -539,29 +734,38 @@ class WisedatConfig(models.Model):
             )
             raise
 
+    # ── Actions ──────────────────────────────
+
     def action_full_sync(self):
-        self.sync_status = 'syncing'
+        """Sync completa sincrona."""
+        self.write({
+            'sync_status': 'syncing',
+            'sync_last_page': 0,
+            'sync_progress': 0,
+            'sync_errors': 0,
+        })
+        self.env.cr.commit()
         errors_total = 0
         try:
-            _, e1 = self._sync_customers()
-            errors_total += e1
+            while self._sync_customers_batch():
+                pass
             _, e2 = self._sync_products()
             errors_total += e2
             self._sync_stock_by_warehouse()
-            self.sync_status = (
-                'ok' if errors_total == 0
-                else 'error'
-            )
-            self.last_sync_date = (
-                fields.Datetime.now()
-            )
+            self.write({
+                'sync_status': (
+                    'ok' if errors_total == 0
+                    else 'error'
+                ),
+                'last_sync_date':
+                    fields.Datetime.now(),
+            })
+            self.env.cr.commit()
             return {
                 'type': 'ir.actions.client',
                 'tag': 'display_notification',
                 'params': {
-                    'title': (
-                        'StampChain — Wisedat Sync'
-                    ),
+                    'title': 'StampChain',
                     'message': (
                         f'Sincronizacao concluida. '
                         f'Erros: {errors_total}'
@@ -575,7 +779,35 @@ class WisedatConfig(models.Model):
             }
         except Exception:
             self.sync_status = 'error'
+            self.env.cr.commit()
             raise
+
+    def action_full_sync_background(self):
+        """Trigger sync via cron imediato.
+        C10: Sem threading."""
+        self.ensure_one()
+        self.write({
+            'sync_status': 'syncing',
+            'sync_last_page': 0,
+            'sync_progress': 0,
+            'sync_errors': 0,
+        })
+        cron = self.env.ref(
+            'stamp_chain.ir_cron_wisedat_sync'
+        )
+        cron.nextcall = fields.Datetime.now()
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': 'StampChain',
+                'message': (
+                    'Sincronizacao agendada. '
+                    'Sera executada em breve.'
+                ),
+                'type': 'success',
+            },
+        }
 
     def action_test_connection(self):
         self.ensure_one()
@@ -585,10 +817,6 @@ class WisedatConfig(models.Model):
             )
             company_name = company.get(
                 'name', 'desconhecida'
-            )
-            _logger.info(
-                'StampChain: Wisedat ligado. '
-                'Empresa: %s', company_name
             )
             return {
                 'type': 'ir.actions.client',
@@ -613,104 +841,45 @@ class WisedatConfig(models.Model):
                 },
             }
 
-    # — Cron job sync —
+    # ── Cron job (C9: @api.model) ────────────
 
-    @classmethod
-    def _cron_sync(cls):
-        """Chamado pelo cron job. Nao retorna
-        notificacao. Protege contra ficar preso
-        em 'syncing' se falhar."""
-        from odoo import api, SUPERUSER_ID
-        from odoo.modules.registry import Registry
-        db_name = cls.pool.db_name
-        registry = Registry(db_name)
-        with registry.cursor() as cr:
-            env = api.Environment(
-                cr, SUPERUSER_ID, {}
-            )
-            configs = env[
-                'tobacco.wisedat.config'
-            ].search([('active', '=', True)])
-            for config in configs:
-                try:
-                    config.sync_status = 'syncing'
-                    cr.commit()
-                    config.action_full_sync()
-                    cr.commit()
-                except Exception as e:
-                    cr.rollback()
-                    _logger.error(
-                        'Cron sync falhou para %s: %s',
-                        config.name, e
-                    )
-                    try:
-                        config.sync_status = 'error'
-                        cr.commit()
-                    except Exception:
-                        cr.rollback()
-
-    # — Background sync (botao UI) —
-
-    def action_full_sync_background(self):
-        """Lanca sync em thread separado.
-        Nao bloqueia o browser."""
-        self.ensure_one()
-        record_id = self.id
-        db_name = self.env.cr.dbname
-        thread = threading.Thread(
-            target=self._run_sync_thread,
-            args=(db_name, record_id),
-        )
-        thread.daemon = True
-        thread.start()
-        return {
-            'type': 'ir.actions.client',
-            'tag': 'display_notification',
-            'params': {
-                'title': 'StampChain',
-                'message': (
-                    'Sincronizacao iniciada '
-                    'em background. Consulta '
-                    'o estado na configuracao.'
-                ),
-                'type': 'success',
-            },
-        }
-
-    @staticmethod
-    def _run_sync_thread(db_name, record_id):
-        """Executa sync num thread separado
-        com cursor proprio. try/finally
-        garante que cursor fecha sempre."""
-        from odoo import api, SUPERUSER_ID
-        from odoo.modules.registry import Registry
-        registry = Registry(db_name)
-        cr = registry.cursor()
-        try:
-            env = api.Environment(
-                cr, SUPERUSER_ID, {}
-            )
-            config = env[
-                'tobacco.wisedat.config'
-            ].browse(record_id)
-            if config.exists():
-                config.action_full_sync()
-                cr.commit()
-        except Exception as e:
-            cr.rollback()
-            _logger.error(
-                'Erro sync background: %s', e
-            )
+    @api.model
+    def _cron_sync(self):
+        """Processa batch de paginas. Se ha mais,
+        agenda proximo cron em 2 min."""
+        configs = self.search([
+            ('active', '=', True)
+        ])
+        for config in configs:
             try:
-                env = api.Environment(
-                    cr, SUPERUSER_ID, {}
+                config.sync_status = 'syncing'
+                config.env.cr.commit()
+                has_more = (
+                    config._sync_customers_batch()
                 )
-                config = env[
-                    'tobacco.wisedat.config'
-                ].browse(record_id)
-                config.sync_status = 'error'
-                cr.commit()
-            except Exception:
-                cr.rollback()
-        finally:
-            cr.close()
+                if has_more:
+                    cron = self.env.ref(
+                        'stamp_chain.'
+                        'ir_cron_wisedat_sync'
+                    )
+                    cron.nextcall = (
+                        fields.Datetime.add(
+                            fields.Datetime.now(),
+                            minutes=2,
+                        )
+                    )
+                    _logger.info(
+                        'StampChain: mais paginas, '
+                        'proximo cron em 2 min'
+                    )
+                config.env.cr.commit()
+            except Exception as e:
+                config.env.cr.rollback()
+                _logger.error(
+                    'Cron sync erro: %s', e
+                )
+                try:
+                    config.sync_status = 'error'
+                    config.env.cr.commit()
+                except Exception:
+                    config.env.cr.rollback()

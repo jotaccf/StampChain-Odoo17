@@ -14,6 +14,7 @@ class ResPartner(models.Model):
     wisedat_id = fields.Integer(
         string='ID Wisedat',
         readonly=True,
+        index=True,
         help='ID do cliente no sistema Wisedat',
     )
     wisedat_synced = fields.Boolean(
