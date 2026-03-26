@@ -32,6 +32,8 @@ class TestAcceptance(TransactionCase):
             'name': 'Acceptance Config',
             'api_url': 'http://test:8080',
             'api_key': 'test-key',
+            'api_username': 'test-user',
+            'api_password': 'test-pass',
         })
         # Warehouse config
         cls.env['tobacco.warehouse.config'].create({
