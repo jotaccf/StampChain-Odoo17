@@ -503,12 +503,22 @@ class WisedatConfig(models.Model):
     ):
         """Faz GET /customers?id={id} para obter
         o entity_type de um cliente individual.
-        Retorna o codigo (str) ou False."""
+        Sem retry — 4xx/5xx retorna False e
+        avanca (nao bloqueia o sync)."""
         try:
-            data = self._api_call_with_retry(
-                'GET',
-                f'/customers?id={wisedat_customer_id}'
+            session = self._get_session()
+            url = (
+                f'{self.api_url}/customers'
+                f'?id={wisedat_customer_id}'
             )
+            response = session.request(
+                'GET', url,
+                headers=self._get_headers(),
+                timeout=10,
+            )
+            if not response.ok:
+                return False
+            data = response.json()
             # Normalizar: pode vir como dict
             # directo ou dentro de 'customer'
             customer = (
@@ -521,12 +531,14 @@ class WisedatConfig(models.Model):
                     'entity_type',
                     customer.get('entitytype', '')
                 )
-                return str(raw).strip() if raw else False
+                return (
+                    str(raw).strip()
+                    if raw else False
+                )
             return False
         except Exception as e:
-            _logger.warning(
-                'Erro ao obter entity_type '
-                'cliente %s: %s',
+            _logger.debug(
+                'entity_type cliente %s: %s',
                 wisedat_customer_id, e
             )
             return False
@@ -1681,7 +1693,8 @@ class WisedatConfig(models.Model):
     @api.model
     def _cron_sync(self):
         configs = self.search([
-            ('active', '=', True)
+            ('active', '=', True),
+            ('sync_status', '=', 'syncing'),
         ])
         for config in configs:
             # V7: watchdog
@@ -1778,11 +1791,11 @@ class WisedatConfig(models.Model):
                     config.env.cr.rollback()
         # Desactivar cron quando nao ha mais
         # trabalho (padrao liga/desliga)
-        all_idle = all(
-            c.sync_phase == 'idle'
-            for c in configs
-        )
-        if all_idle:
+        any_syncing = self.search_count([
+            ('active', '=', True),
+            ('sync_status', '=', 'syncing'),
+        ])
+        if not any_syncing:
             try:
                 cron = self.env.ref(
                     'stamp_chain.ir_cron_wisedat_sync'
