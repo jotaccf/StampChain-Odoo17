@@ -79,3 +79,7 @@ access_wisedat_invoice_user,tobacco.wisedat.invoice.user,model_tobacco_wisedat_i
 access_wisedat_invoice_production,tobacco.wisedat.invoice.production,model_tobacco_wisedat_invoice,stamp_chain.group_stamp_production,1,0,0,0
 access_wisedat_invoice_manager,tobacco.wisedat.invoice.manager,model_tobacco_wisedat_invoice,stamp_chain.group_stamp_manager,1,1,1,0
 access_wisedat_invoice_fiscal,tobacco.wisedat.invoice.fiscal,model_tobacco_wisedat_invoice,stamp_chain.group_stamp_fiscal,1,0,0,0
+access_wisedat_series_user,tobacco.wisedat.series.user,model_tobacco_wisedat_series,stamp_chain.group_stamp_user,1,0,0,0
+access_wisedat_series_production,tobacco.wisedat.series.production,model_tobacco_wisedat_series,stamp_chain.group_stamp_production,1,0,0,0
+access_wisedat_series_manager,tobacco.wisedat.series.manager,model_tobacco_wisedat_series,stamp_chain.group_stamp_manager,1,1,1,1
+access_wisedat_series_fiscal,tobacco.wisedat.series.fiscal,model_tobacco_wisedat_series,stamp_chain.group_stamp_fiscal,1,0,0,0

@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <!-- Tree view -->
+  <record id="view_wisedat_series_tree" model="ir.ui.view">
+    <field name="name">tobacco.wisedat.series.tree</field>
+    <field name="model">tobacco.wisedat.series</field>
+    <field name="arch" type="xml">
+      <tree>
+        <field name="wisedat_id"/>
+        <field name="name"/>
+        <field name="description"/>
+        <field name="document_type"/>
+        <field name="is_active" widget="boolean_toggle"/>
+        <field name="wisedat_config_id"/>
+        <field name="last_sync_date"/>
+      </tree>
+    </field>
+  </record>
+
+  <!-- Form view -->
+  <record id="view_wisedat_series_form" model="ir.ui.view">
+    <field name="name">tobacco.wisedat.series.form</field>
+    <field name="model">tobacco.wisedat.series</field>
+    <field name="arch" type="xml">
+      <form>
+        <sheet>
+          <group>
+            <group string="Identificacao">
+              <field name="wisedat_id" readonly="1"/>
+              <field name="name" readonly="1"/>
+              <field name="description" readonly="1"/>
+            </group>
+            <group string="Classificacao">
+              <field name="document_type" readonly="1"/>
+              <field name="wisedat_document_type" readonly="1"/>
+              <field name="is_active"/>
+              <field name="wisedat_config_id" readonly="1"/>
+              <field name="last_sync_date" readonly="1"/>
+            </group>
+          </group>
+        </sheet>
+      </form>
+    </field>
+  </record>
+
+  <!-- Search view -->
+  <record id="view_wisedat_series_search" model="ir.ui.view">
+    <field name="name">tobacco.wisedat.series.search</field>
+    <field name="model">tobacco.wisedat.series</field>
+    <field name="arch" type="xml">
+      <search>
+        <field name="name"/>
+        <field name="description"/>
+        <field name="document_type"/>
+        <filter name="active_only"
+                string="Activas"
+                domain="[('is_active', '=', True)]"/>
+        <filter name="transport_guides"
+                string="Guias de Transporte"
+                domain="[('document_type', '=', 'movement_of_goods')]"/>
+        <group expand="0" string="Agrupar por">
+          <filter name="group_doc_type"
+                  string="Tipo Documento"
+                  context="{'group_by': 'document_type'}"/>
+          <filter name="group_active"
+                  string="Estado"
+                  context="{'group_by': 'is_active'}"/>
+        </group>
+      </search>
+    </field>
+  </record>
+
+  <!-- Action -->
+  <record id="action_wisedat_series" model="ir.actions.act_window">
+    <field name="name">Series Documentais Wisedat</field>
+    <field name="res_model">tobacco.wisedat.series</field>
+    <field name="view_mode">tree,form</field>
+    <field name="context">{'search_default_active_only': 1}</field>
+  </record>
+</odoo>

@@ -132,6 +132,27 @@ class WisedatConfig(models.Model):
     last_sync_invoices = fields.Integer(
         default=0, readonly=True)
 
+    # — Series documentais —
+    series_ids = fields.One2many(
+        'tobacco.wisedat.series',
+        'wisedat_config_id',
+        string='Series Documentais',
+    )
+    transport_guide_series_id = fields.Many2one(
+        'tobacco.wisedat.series',
+        string='Serie Guia de Transporte',
+        domain="[('wisedat_config_id', '=', id),"
+               " ('is_active', '=', True),"
+               " ('document_type', '=', "
+               "'movement_of_goods')]",
+        help='Serie a utilizar na criacao de '
+             'Guias de Transporte no Wisedat.',
+    )
+    last_sync_series_date = fields.Datetime(
+        string='Ultima Sync Series',
+        readonly=True,
+    )
+
     # — Fase cron —
     sync_phase = fields.Selection([
         ('idle', 'Parado'),
@@ -1127,6 +1148,168 @@ class WisedatConfig(models.Model):
         })
         self.env.cr.commit()
 
+    # ── Series documentais ───────────────────
+
+    # Map Wisedat document_type values to local
+    WISEDAT_DOCTYPE_MAP = {
+        'MovementOfGoods': 'movement_of_goods',
+        'movement_of_goods': 'movement_of_goods',
+        'movementofgoods': 'movement_of_goods',
+        'SalesInvoice': 'sales_invoice',
+        'sales_invoice': 'sales_invoice',
+        'salesinvoice': 'sales_invoice',
+        'CreditNote': 'credit_note',
+        'credit_note': 'credit_note',
+        'creditnote': 'credit_note',
+        'DebitNote': 'debit_note',
+        'debit_note': 'debit_note',
+        'debitnote': 'debit_note',
+        'Receipt': 'receipt',
+        'receipt': 'receipt',
+        'ProForma': 'proforma',
+        'proforma': 'proforma',
+    }
+
+    def _sync_series(self):
+        """Fetch series from Wisedat GET /series
+        and create/update local records."""
+        self.ensure_one()
+        _logger.info('StampChain: sync series Wisedat')
+        try:
+            response = self._api_call_with_retry(
+                'GET', '/series'
+            )
+        except Exception as e:
+            _logger.error(
+                'Erro ao obter series Wisedat: %s', e
+            )
+            raise UserError(
+                f'Erro ao obter series do Wisedat: '
+                f'{str(e)}'
+            )
+        # Normalise response to list
+        series_list = (
+            response.get('series', [])
+            if isinstance(response, dict)
+            else response
+            if isinstance(response, list)
+            else []
+        )
+        if not series_list:
+            _logger.warning(
+                'StampChain: API /series devolveu '
+                '0 series'
+            )
+        Series = self.env['tobacco.wisedat.series']
+        existing = Series.search([
+            ('wisedat_config_id', '=', self.id)
+        ])
+        existing_map = {
+            s.wisedat_id: s for s in existing
+        }
+        synced_ids = set()
+        create_vals_list = []
+        for s in series_list:
+            wisedat_id = s.get('id')
+            if not wisedat_id:
+                continue
+            raw_doc_type = str(
+                s.get('document_type', '')
+            )
+            mapped_type = self.WISEDAT_DOCTYPE_MAP.get(
+                raw_doc_type, 'other'
+            )
+            vals = {
+                'wisedat_id': wisedat_id,
+                'name': str(
+                    s.get('name',
+                           s.get('description', ''))
+                ),
+                'description': str(
+                    s.get('description', '')
+                ),
+                'document_type': mapped_type,
+                'wisedat_document_type': raw_doc_type,
+                'is_active': bool(
+                    s.get('active', True)
+                ),
+                'wisedat_config_id': self.id,
+                'last_sync_date':
+                    fields.Datetime.now(),
+            }
+            existing_rec = existing_map.get(
+                wisedat_id
+            )
+            if existing_rec:
+                existing_rec.write(vals)
+            else:
+                create_vals_list.append(vals)
+            synced_ids.add(wisedat_id)
+        if create_vals_list:
+            Series.create(create_vals_list)
+        # Deactivate series removed from Wisedat
+        removed = existing.filtered(
+            lambda s: s.wisedat_id not in synced_ids
+        )
+        if removed:
+            removed.write({'is_active': False})
+        # Clear selection if chosen series was
+        # deactivated
+        if (self.transport_guide_series_id
+                and not
+                self.transport_guide_series_id
+                .is_active):
+            self.transport_guide_series_id = False
+        self.last_sync_series_date = (
+            fields.Datetime.now()
+        )
+        self.env.cr.commit()
+        _logger.info(
+            'StampChain: %d series sincronizadas',
+            len(synced_ids)
+        )
+
+    def action_sync_series(self):
+        """Button 'Obter Series' handler."""
+        self.ensure_one()
+        self._sync_series()
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': 'StampChain',
+                'message': (
+                    'Series sincronizadas com '
+                    'sucesso.'
+                ),
+                'type': 'success',
+            },
+        }
+
+    def _validate_transport_guide_series(self):
+        """Validate that a series is configured
+        and active before creating a transport
+        guide. Returns the series wisedat_id."""
+        self.ensure_one()
+        if not self.transport_guide_series_id:
+            raise UserError(
+                'Serie para Guia de Transporte nao '
+                'configurada.\n'
+                'Aceda a Configuracoes > Wisedat e '
+                'seleccione uma serie na aba '
+                '"Series Documentais".'
+            )
+        series = self.transport_guide_series_id
+        if not series.is_active:
+            raise UserError(
+                f'A serie "{series.display_name}" '
+                f'esta inactiva no Wisedat.\n'
+                f'Sincronize as series (botao '
+                f'"Obter Series") e seleccione '
+                f'uma serie activa.'
+            )
+        return series.wisedat_id
+
     # ── Guia transporte ──────────────────────
 
     def _create_wisedat_transport_guide(
@@ -1143,6 +1326,10 @@ class WisedatConfig(models.Model):
         )
         if not sale:
             return None
+        # Validate series is configured
+        series_id = (
+            self._validate_transport_guide_series()
+        )
         wisedat_warehouse = self._get_warehouse_code(
             picking.picking_type_id.warehouse_id.id
         )
@@ -1153,12 +1340,29 @@ class WisedatConfig(models.Model):
                 order_line = sale.order_line.filtered(
                     lambda l: l.product_id == product
                 )[:1]
+                # Determine tax rate from order
+                # line fiscal position
+                tax_rate = 0.0
+                if order_line and order_line.tax_id:
+                    tax = order_line.tax_id[:1]
+                    tax_rate = (
+                        tax.amount
+                        if tax.amount_type == 'percent'
+                        else 0.0
+                    )
+                # Determine discount
+                discount = 0.0
+                if order_line:
+                    discount = (
+                        order_line.discount or 0.0
+                    )
                 lines.append({
                     'id': (
                         product.wisedat_id
                         if hasattr(
                             product, 'wisedat_id'
-                        ) else None
+                        ) and product.wisedat_id
+                        else None
                     ),
                     'description': product.name,
                     'quantity': move.quantity_done,
@@ -1166,6 +1370,8 @@ class WisedatConfig(models.Model):
                         order_line.price_unit
                         if order_line else 0
                     ),
+                    'tax': tax_rate,
+                    'discount': discount,
                     'type': 1,
                     'warehouse': wisedat_warehouse,
                 })
@@ -1183,6 +1389,7 @@ class WisedatConfig(models.Model):
                 f'nao sincronizado com Wisedat.'
             )
         payload = {
+            'series': series_id,
             'customer': wisedat_customer_id,
             'date': str(fields.Date.today()),
             'expiration_date': str(
@@ -1193,7 +1400,7 @@ class WisedatConfig(models.Model):
             'items': lines,
         }
         try:
-            response = self._api_call(
+            response = self._api_call_with_retry(
                 'POST', '/movementofgoods',
                 payload
             )
@@ -1201,9 +1408,14 @@ class WisedatConfig(models.Model):
             picking.wisedat_doc_id = str(
                 wisedat_doc_id
             )
+            series_name = (
+                self.transport_guide_series_id
+                .display_name
+            )
             picking.message_post(
                 body=(
                     f'Guia Wisedat: {wisedat_doc_id}'
+                    f' (Serie: {series_name})'
                 ),
             )
             return wisedat_doc_id
