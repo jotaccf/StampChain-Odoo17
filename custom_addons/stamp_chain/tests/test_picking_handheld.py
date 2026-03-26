@@ -163,6 +163,8 @@ class TestWarehouseLayoutWizard(TransactionCase):
                 'name': 'Test',
                 'api_url': 'http://test',
                 'api_key': 'test',
+                'api_username': 'test-user',
+                'api_password': 'test-pass',
             })
         self.wh_config = self.env[
             'tobacco.warehouse.config'
