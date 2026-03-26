@@ -92,6 +92,12 @@ class WisedatConfig(models.Model):
         default=True,
     )
 
+    # — Controlo de paragem —
+    sync_stop_requested = fields.Boolean(
+        string='Paragem Solicitada',
+        default=False,
+    )
+
     # — Progresso clientes —
     sync_last_page = fields.Integer(
         default=0, readonly=True)
@@ -630,6 +636,8 @@ class WisedatConfig(models.Model):
             })
             self.env.cr.commit()
             self.env.invalidate_all()
+            if self._check_stop_requested():
+                return False
             _logger.info(
                 'StampChain: clientes pag %d/%d',
                 page, total_pages
@@ -867,6 +875,8 @@ class WisedatConfig(models.Model):
             })
             self.env.cr.commit()
             self.env.invalidate_all()
+            if self._check_stop_requested():
+                return False
             _logger.info(
                 'StampChain: produtos pag %d/%d',
                 page, total_pages
@@ -1173,6 +1183,8 @@ class WisedatConfig(models.Model):
             })
             self.env.cr.commit()
             self.env.invalidate_all()
+            if self._check_stop_requested():
+                return False
             _logger.info(
                 'StampChain: facturas pag %d/%d',
                 page, total_pages
@@ -1487,6 +1499,7 @@ class WisedatConfig(models.Model):
         self.write({
             'sync_status': 'syncing',
             'sync_phase': 'categories',
+            'sync_stop_requested': False,
             'sync_last_page': 0,
             'sync_progress': 0,
             'sync_errors': 0,
@@ -1540,6 +1553,7 @@ class WisedatConfig(models.Model):
         self.write({
             'sync_status': 'syncing',
             'sync_phase': 'categories',
+            'sync_stop_requested': False,
             'sync_last_page': 0,
             'sync_progress': 0,
             'sync_errors': 0,
@@ -1571,6 +1585,51 @@ class WisedatConfig(models.Model):
                 'type': 'success',
             },
         }
+
+    def action_stop_sync(self):
+        """Solicita paragem da sync.
+        O batch loop verifica a flag a cada
+        pagina e para graciosamente."""
+        self.ensure_one()
+        self.write({
+            'sync_stop_requested': True,
+        })
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': 'StampChain',
+                'message': (
+                    'Paragem solicitada. '
+                    'A sync para apos a pagina '
+                    'actual ser concluida.'
+                ),
+                'type': 'warning',
+            },
+        }
+
+    def _check_stop_requested(self):
+        """Verifica se paragem foi solicitada.
+        Chamado a cada pagina nos batch loops.
+        Retorna True se deve parar."""
+        self.env.invalidate_all()
+        self_fresh = self.env[
+            'tobacco.wisedat.config'
+        ].browse(self.id)
+        if self_fresh.sync_stop_requested:
+            _logger.info(
+                'StampChain: paragem solicitada '
+                'pelo utilizador.'
+            )
+            self_fresh.write({
+                'sync_stop_requested': False,
+                'sync_status': 'ok',
+                'sync_phase': 'idle',
+                'sync_phase_started': False,
+            })
+            self_fresh.env.cr.commit()
+            return True
+        return False
 
     def action_test_connection(self):
         self.ensure_one()

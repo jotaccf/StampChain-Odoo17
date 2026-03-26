@@ -13,7 +13,15 @@
           <button name="action_full_sync_background"
                   string="Sync Completa"
                   type="object"
-                  class="btn-secondary"/>
+                  class="btn-secondary"
+                  invisible="sync_status == 'syncing'"/>
+          <button name="action_stop_sync"
+                  string="Parar Sync"
+                  type="object"
+                  class="btn-danger"
+                  icon="fa-stop"
+                  invisible="sync_status != 'syncing'"
+                  confirm="Tem a certeza que deseja parar a sincronizacao?"/>
         </header>
         <sheet>
           <group>
