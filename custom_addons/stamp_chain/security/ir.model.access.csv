@@ -75,10 +75,6 @@ access_physical_count_wizard_manager,tobacco.stamp.physical.count.wizard.manager
 access_layout_wizard_user,tobacco.warehouse.layout.wizard.user,model_tobacco_warehouse_layout_wizard,stamp_chain.group_stamp_user,1,1,1,1
 access_layout_wizard_production,tobacco.warehouse.layout.wizard.production,model_tobacco_warehouse_layout_wizard,stamp_chain.group_stamp_production,1,1,1,1
 access_layout_wizard_manager,tobacco.warehouse.layout.wizard.manager,model_tobacco_warehouse_layout_wizard,stamp_chain.group_stamp_manager,1,1,1,1
-access_wisedat_invoice_user,tobacco.wisedat.invoice.user,model_tobacco_wisedat_invoice,stamp_chain.group_stamp_user,1,0,0,0
-access_wisedat_invoice_production,tobacco.wisedat.invoice.production,model_tobacco_wisedat_invoice,stamp_chain.group_stamp_production,1,0,0,0
-access_wisedat_invoice_manager,tobacco.wisedat.invoice.manager,model_tobacco_wisedat_invoice,stamp_chain.group_stamp_manager,1,1,1,0
-access_wisedat_invoice_fiscal,tobacco.wisedat.invoice.fiscal,model_tobacco_wisedat_invoice,stamp_chain.group_stamp_fiscal,1,0,0,0
 access_wisedat_series_user,tobacco.wisedat.series.user,model_tobacco_wisedat_series,stamp_chain.group_stamp_user,1,0,0,0
 access_wisedat_series_production,tobacco.wisedat.series.production,model_tobacco_wisedat_series,stamp_chain.group_stamp_production,1,0,0,0
 access_wisedat_series_manager,tobacco.wisedat.series.manager,model_tobacco_wisedat_series,stamp_chain.group_stamp_manager,1,1,1,1

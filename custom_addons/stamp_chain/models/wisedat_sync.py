@@ -64,7 +64,7 @@ class WisedatConfig(models.Model):
         string='Sincronizar Artigos',
         default=True,
     )
-    sync_invoices = fields.Boolean(
+    sync_transport_guides = fields.Boolean(
         string='Sincronizar Facturas',
         default=True,
     )
@@ -134,21 +134,6 @@ class WisedatConfig(models.Model):
     last_sync_products = fields.Integer(
         default=0, readonly=True)
 
-    # — Progresso facturas —
-    invoice_sync_last_page = fields.Integer(
-        default=0, readonly=True)
-    invoice_sync_total_pages = fields.Integer(
-        default=0, readonly=True)
-    invoice_sync_progress = fields.Integer(
-        default=0, readonly=True)
-    invoice_sync_errors = fields.Integer(
-        default=0, readonly=True)
-    invoice_sync_total_records = fields.Integer(
-        default=0, readonly=True)
-    invoice_sync_percent = fields.Integer(
-        default=0, readonly=True)
-    last_sync_invoices = fields.Integer(
-        default=0, readonly=True)
 
     # — Series documentais —
     series_ids = fields.One2many(
@@ -178,7 +163,6 @@ class WisedatConfig(models.Model):
         ('customers', 'Clientes'),
         ('products', 'Produtos'),
         ('stock', 'Stock'),
-        ('invoices', 'Facturas'),
     ], default='idle', readonly=True)
     sync_phase_started = fields.Datetime(
         string='Fase Iniciada Em',
@@ -1074,205 +1058,6 @@ class WisedatConfig(models.Model):
 
     # ── Facturas (leitura) ───────────────────
 
-    def _sync_invoices_batch(self):
-        Invoice = self.env[
-            'tobacco.wisedat.invoice'
-        ]
-        start_page = (
-            (self.invoice_sync_last_page or 0) + 1
-        )
-        synced = errors = 0
-        for page_offset in range(
-            self.SYNC_BATCH_PAGES
-        ):
-            page = start_page + page_offset
-            endpoint = (
-                f'/salesinvoices?limit='
-                f'{self.API_PAGE_SIZE}'
-                f'&page={page}'
-            )
-            if self.last_sync_date:
-                endpoint += (
-                    f'&modified_since='
-                    f'{self.last_sync_date.isoformat()}'
-                )
-            try:
-                response = (
-                    self._api_call_with_retry(
-                        'GET', endpoint
-                    )
-                )
-            except Exception as e:
-                _logger.error(
-                    'API error facturas pag %d: %s',
-                    page, e
-                )
-                self.sync_status = 'error'
-                self.env.cr.commit()
-                return False
-            invoices = (
-                response.get('salesinvoices', [])
-                if isinstance(response, dict)
-                else response
-                if isinstance(response, list)
-                else []
-            )
-            pagination = (
-                response.get('pagination', {})
-                if isinstance(response, dict)
-                else {}
-            )
-            total_pages = pagination.get(
-                'number_pages', 1
-            )
-            if not invoices:
-                self._finish_invoice_sync(
-                    synced, errors
-                )
-                return False
-            if page == start_page:
-                total_records = pagination.get(
-                    'number_items', 0
-                )
-                self.write({
-                    'invoice_sync_total_pages':
-                        total_pages,
-                    'invoice_sync_total_records':
-                        total_records,
-                })
-                self.env.cr.commit()
-            wisedat_ids = [
-                str(i.get('id')) for i in invoices
-                if i.get('id')
-            ]
-            existing = Invoice.search([
-                ('wisedat_id', 'in', wisedat_ids)
-            ])
-            existing_map = {
-                i.wisedat_id: i for i in existing
-            }
-            create_vals_list = []
-            for inv in invoices:
-                try:
-                    inv_id = str(inv.get('id'))
-                    customer = False
-                    cust_data = inv.get(
-                        'customer', {}
-                    )
-                    if isinstance(cust_data, dict):
-                        customer = self.env[
-                            'res.partner'
-                        ].search([
-                            ('wisedat_id', '=',
-                             cust_data.get('id'))
-                        ], limit=1)
-                    vals = {
-                        'wisedat_id': inv_id,
-                        'document_number': str(
-                            inv.get(
-                                'document_number',
-                                ''
-                            )
-                        ),
-                        'date': inv.get('date'),
-                        'customer_id': (
-                            customer.id
-                            if customer else False
-                        ),
-                        'total': inv.get(
-                            'total', 0
-                        ),
-                        'merchandise': inv.get(
-                            'merchandise', 0
-                        ),
-                        'taxes': inv.get(
-                            'taxes', 0
-                        ),
-                        'currency': str(
-                            inv.get(
-                                'currency', 'EUR'
-                            )
-                        ),
-                        'wisedat_config_id':
-                            self.id,
-                        'raw_data': json.dumps(
-                            inv, default=str
-                        ),
-                    }
-                    existing_inv = (
-                        existing_map.get(inv_id)
-                    )
-                    if existing_inv:
-                        existing_inv.write(vals)
-                    else:
-                        create_vals_list.append(
-                            vals
-                        )
-                    synced += 1
-                except Exception as e:
-                    errors += 1
-                    _logger.error(
-                        'Erro factura %s: %s',
-                        inv.get('id'), e
-                    )
-            if create_vals_list:
-                Invoice.create(create_vals_list)
-            self.env.cr.commit()
-            new_progress = (
-                (self.invoice_sync_progress or 0)
-                + synced
-            )
-            total_rec = (
-                self.invoice_sync_total_records or 1
-            )
-            pct = min(
-                int(new_progress * 100 / total_rec),
-                100
-            ) if total_rec > 0 else 0
-            self.write({
-                'invoice_sync_last_page': page,
-                'invoice_sync_progress': new_progress,
-                'invoice_sync_errors': (
-                    (self.invoice_sync_errors
-                     or 0) + errors
-                ),
-                'invoice_sync_percent': pct,
-            })
-            self.env.cr.commit()
-            self.env.invalidate_all()
-            if self._check_stop_requested():
-                return False
-            _logger.info(
-                'StampChain: facturas pag %d/%d',
-                page, total_pages
-            )
-            synced = errors = 0
-            if page >= total_pages:
-                self._finish_invoice_sync(0, 0)
-                return False
-        return True
-
-    def _finish_invoice_sync(self, synced,
-                              errors):
-        total_synced = (
-            (self.invoice_sync_progress or 0)
-            + synced
-        )
-        total_errors = (
-            (self.invoice_sync_errors or 0)
-            + errors
-        )
-        self.write({
-            'invoice_sync_last_page': 0,
-            'invoice_sync_total_pages': 0,
-            'invoice_sync_progress': 0,
-            'invoice_sync_errors': 0,
-            'invoice_sync_total_records': 0,
-            'invoice_sync_percent': 0,
-            'last_sync_invoices': total_synced,
-        })
-        self.env.cr.commit()
-
     # ── Series documentais ───────────────────
 
     # Map Wisedat document_type values to local
@@ -1567,11 +1352,6 @@ class WisedatConfig(models.Model):
             'product_sync_errors': 0,
             'product_sync_total_records': 0,
             'product_sync_percent': 0,
-            'invoice_sync_last_page': 0,
-            'invoice_sync_progress': 0,
-            'invoice_sync_errors': 0,
-            'invoice_sync_total_records': 0,
-            'invoice_sync_percent': 0,
         })
         self.env.cr.commit()
         try:
@@ -1581,8 +1361,6 @@ class WisedatConfig(models.Model):
             while self._sync_products_batch():
                 pass
             self._sync_stock_by_warehouse()
-            while self._sync_invoices_batch():
-                pass
             self.write({
                 'sync_status': 'ok',
                 'sync_phase': 'idle',
@@ -1621,11 +1399,6 @@ class WisedatConfig(models.Model):
             'product_sync_errors': 0,
             'product_sync_total_records': 0,
             'product_sync_percent': 0,
-            'invoice_sync_last_page': 0,
-            'invoice_sync_progress': 0,
-            'invoice_sync_errors': 0,
-            'invoice_sync_total_records': 0,
-            'invoice_sync_percent': 0,
         })
         cron = self.env.ref(
             'stamp_chain.ir_cron_wisedat_sync'
@@ -1797,22 +1570,7 @@ class WisedatConfig(models.Model):
                 # Fase 3: Stock
                 if config.sync_phase == 'stock':
                     config._sync_stock_by_warehouse()
-                    config.write({
-                        'sync_phase': 'invoices',
-                        'sync_phase_started':
-                            fields.Datetime.now(),
-                    })
-                    config.env.cr.commit()
-                # Fase 4: Facturas
-                if (config.sync_phase == 'invoices'
-                        and config.sync_invoices):
-                    has_more = (
-                        config._sync_invoices_batch()
-                    )
-                    if has_more:
-                        self._reschedule_cron(2)
-                        return
-                # Concluido
+                # Concluido (apos stock)
                 config.write({
                     'sync_status': 'ok',
                     'sync_phase': 'idle',

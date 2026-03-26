@@ -20,7 +20,7 @@ class TestWisedatIntegration(TransactionCase):
             'api_password': 'test-pass',
             'sync_customers': True,
             'sync_products': True,
-            'sync_invoices': True,
+            'sync_transport_guides': True,
         })
         cls.wh = cls.env['stock.warehouse'].search(
             [], limit=1

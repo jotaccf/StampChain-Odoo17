@@ -36,7 +36,7 @@
             <group string="Sincronizacao">
               <field name="sync_customers"/>
               <field name="sync_products"/>
-              <field name="sync_invoices"/>
+              <field name="sync_transport_guides"/>
               <field name="sync_frequency"/>
               <field name="last_sync_date"/>
               <field name="sync_status" widget="badge"
@@ -60,7 +60,7 @@
 
             <!-- Progress bar — 6 patamares por invisible -->
             <div class="sc-sync-bar-track"
-                 invisible="sync_phase not in ('customers', 'products', 'invoices')">
+                 invisible="sync_phase not in ('customers', 'products')">
               <div class="sc-sync-bar-fill" style="width: 5%;"
                    invisible="sync_percent &gt; 10"/>
               <div class="sc-sync-bar-fill" style="width: 20%;"
@@ -76,7 +76,7 @@
             </div>
             <!-- Barra indeterminada para categorias/stock -->
             <div class="sc-sync-bar-track"
-                 invisible="sync_phase in ('customers', 'products', 'invoices', 'idle')">
+                 invisible="sync_phase in ('customers', 'products', 'idle')">
               <div class="sc-sync-bar-fill sc-sync-bar-indeterminate"/>
             </div>
 
@@ -95,15 +95,8 @@
               produtos
               (<field name="product_sync_percent" readonly="1" class="d-inline" widget="integer"/>%)
             </div>
-            <div class="sc-sync-bar-text" invisible="sync_phase != 'invoices'">
-              <field name="invoice_sync_progress" readonly="1" class="d-inline" widget="integer"/>
-              de
-              <field name="invoice_sync_total_records" readonly="1" class="d-inline" widget="integer"/>
-              facturas
-              (<field name="invoice_sync_percent" readonly="1" class="d-inline" widget="integer"/>%)
-            </div>
             <div class="sc-sync-bar-text"
-                 invisible="sync_phase in ('customers', 'products', 'invoices')">
+                 invisible="sync_phase in ('customers', 'products')">
               <field name="sync_phase" readonly="1" class="d-inline"/>...
             </div>
 

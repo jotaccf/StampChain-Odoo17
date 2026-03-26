@@ -267,7 +267,7 @@ class StockPicking(models.Model):
                 config = self.env[
                     'tobacco.wisedat.config'
                 ].search([], limit=1)
-                if config and config.sync_invoices:
+                if config and config.sync_transport_guides:
                     try:
                         config._create_wisedat_transport_guide(
                             picking.id
