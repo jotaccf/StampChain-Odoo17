@@ -221,32 +221,62 @@ class WisedatConfig(models.Model):
             )
         return mapping[0].wisedat_warehouse_code
 
-    def _sync_customers(self):
+    def _sync_customers(self, limit=50,
+                        max_pages=None):
         _logger.info(
             'StampChain: sync clientes Wisedat->Odoo'
         )
         try:
-            response = self._api_call(
-                'GET', '/customers'
-            )
-            customers = (
-                response.get('customers', [])
-                if isinstance(response, dict)
-                else response
-                if isinstance(response, list)
-                else []
-            )
+            page = 1
             synced = errors = 0
-            for cust in customers:
-                try:
-                    self._sync_single_customer(cust)
-                    synced += 1
-                except Exception as e:
-                    errors += 1
-                    _logger.error(
-                        'Erro sync cliente %s: %s',
-                        cust.get('id'), e
+            while True:
+                response = self._api_call(
+                    'GET',
+                    f'/customers?limit={limit}'
+                    f'&page={page}'
+                )
+                customers = (
+                    response.get('customers', [])
+                    if isinstance(response, dict)
+                    else response
+                    if isinstance(response, list)
+                    else []
+                )
+                pagination = (
+                    response.get('pagination', {})
+                    if isinstance(response, dict)
+                    else {}
+                )
+                total_pages = pagination.get(
+                    'number_pages', 1
+                )
+                for cust in customers:
+                    try:
+                        self._sync_single_customer(
+                            cust
+                        )
+                        synced += 1
+                    except Exception as e:
+                        errors += 1
+                        _logger.error(
+                            'Erro sync cliente %s: %s',
+                            cust.get('id'), e
+                        )
+                _logger.info(
+                    'StampChain: clientes pagina '
+                    '%d/%d — %d sincronizados',
+                    page, total_pages, synced
+                )
+                if page >= total_pages:
+                    break
+                if max_pages and page >= max_pages:
+                    _logger.info(
+                        'StampChain: limite de '
+                        '%d paginas atingido.',
+                        max_pages
                     )
+                    break
+                page += 1
             self.write({
                 'last_sync_date':
                     fields.Datetime.now(),
