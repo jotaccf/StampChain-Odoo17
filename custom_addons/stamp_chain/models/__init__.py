@@ -17,3 +17,5 @@ from . import warehouse_config
 from . import stamp_audit
 from . import stamp_found
 from . import stamp_physical_count
+from . import product_sync
+from . import wisedat_invoice

@@ -279,6 +279,109 @@
 .sc-incm-code { font-family: var(--font-mono, monospace); font-size: 14px; font-weight: 500; letter-spacing: 0.08em; color: var(--color-text-primary, #212529); }
 .sc-incm-code-large { font-family: var(--font-mono, monospace); font-size: 24px; font-weight: 500; letter-spacing: 0.1em; color: var(--color-text-primary, #212529); }
 
+/* ── Sync progress display ─────────────────── */
+.sc-sync-panel {
+  background: var(--color-background-primary, #ffffff);
+  border: 0.5px solid var(--color-border-tertiary, #dee2e6);
+  border-radius: 12px;
+  padding: 20px;
+  margin: 8px 0 16px 0;
+}
+.sc-sync-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary, #212529);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sc-sync-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+}
+.sc-sync-bar-track {
+  width: 100%;
+  height: 8px;
+  background: var(--color-background-secondary, #f0f0f0);
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 16px 0 8px 0;
+}
+.sc-sync-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: var(--sc-green);
+  transition: width 0.3s ease;
+}
+.sc-sync-bar-text {
+  font-size: 12px;
+  color: var(--color-text-secondary, #6c757d);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.sc-sync-idle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+  font-size: 13px;
+  color: var(--color-text-primary, #212529);
+}
+.sc-sync-idle-row + .sc-sync-idle-row {
+  border-top: 0.5px solid var(--color-border-tertiary, #dee2e6);
+}
+.sc-sync-idle-label {
+  color: var(--color-text-secondary, #6c757d);
+  font-size: 12px;
+}
+.sc-sync-idle-value {
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.sc-sync-idle-value.err {
+  color: var(--sc-red);
+  font-weight: 600;
+}
+.sc-pulse-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--sc-amber);
+  animation: sc-pulse 1.4s ease-in-out infinite;
+}
+@keyframes sc-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.75); }
+}
+
+/* Metric card variant with smaller value for sync */
+.sc-metric-card.sc-metric-compact .sc-metric-value {
+  font-size: 22px;
+}
+
+/* No-data placeholder */
+.sc-sync-empty {
+  text-align: center;
+  padding: 24px 16px;
+  color: var(--color-text-secondary, #6c757d);
+  font-size: 13px;
+}
+.sc-sync-empty-icon {
+  font-size: 28px;
+  margin-bottom: 8px;
+  opacity: 0.4;
+}
+
+@media (max-width: 768px) {
+  .sc-sync-panel { padding: 14px; margin: 6px 0 12px 0; }
+  .sc-sync-metrics { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .sc-metric-card.sc-metric-compact .sc-metric-value { font-size: 20px; }
+  .sc-sync-idle-row { flex-direction: column; align-items: flex-start; gap: 2px; padding: 8px 0; }
+}
+
 /* ── Botao handheld verde ────────────────── */
 .sc-btn-handheld { background: var(--sc-green, #1D9E75) !important; color: white !important; border-color: var(--sc-green, #1D9E75) !important; }
 .sc-btn-handheld:hover { background: var(--sc-green-dark, #085041) !important; }

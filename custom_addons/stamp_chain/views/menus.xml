@@ -112,6 +112,11 @@
             parent="menu_fiscal_docs"
             action="action_fiscal_document_all"
             sequence="3"/>
+  <menuitem id="menu_wisedat_invoices"
+            name="Facturas Wisedat"
+            parent="menu_fiscal_docs"
+            action="action_wisedat_invoice"
+            sequence="4"/>
 
   <!-- Auditoria -->
   <menuitem id="menu_auditoria"

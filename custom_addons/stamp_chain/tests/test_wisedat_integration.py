@@ -16,6 +16,8 @@ class TestWisedatIntegration(TransactionCase):
             'name': 'Test Wisedat',
             'api_url': 'http://wisedat-test:8080',
             'api_key': 'test-key-abc123',
+            'api_username': 'test-user',
+            'api_password': 'test-pass',
             'sync_customers': True,
             'sync_products': True,
             'sync_invoices': True,

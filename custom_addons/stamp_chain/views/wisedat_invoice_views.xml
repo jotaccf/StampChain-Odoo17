@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data>
+    <record id="view_wisedat_invoice_list" model="ir.ui.view">
+      <field name="name">tobacco.wisedat.invoice.list</field>
+      <field name="model">tobacco.wisedat.invoice</field>
+      <field name="arch" type="xml">
+        <tree create="0" delete="0">
+          <field name="wisedat_id"/>
+          <field name="document_number"/>
+          <field name="date"/>
+          <field name="customer_id"/>
+          <field name="total" sum="Total"/>
+          <field name="currency"/>
+        </tree>
+      </field>
+    </record>
+    <record id="view_wisedat_invoice_form" model="ir.ui.view">
+      <field name="name">tobacco.wisedat.invoice.form</field>
+      <field name="model">tobacco.wisedat.invoice</field>
+      <field name="arch" type="xml">
+        <form create="0" edit="0">
+          <sheet>
+            <group>
+              <group>
+                <field name="wisedat_id"/>
+                <field name="document_number"/>
+                <field name="date"/>
+                <field name="customer_id"/>
+              </group>
+              <group>
+                <field name="merchandise"/>
+                <field name="taxes"/>
+                <field name="total"/>
+                <field name="currency"/>
+              </group>
+            </group>
+            <group>
+              <field name="raw_data" readonly="1"
+                     style="font-family:monospace; font-size:12px"/>
+            </group>
+          </sheet>
+        </form>
+      </field>
+    </record>
+    <record id="action_wisedat_invoice" model="ir.actions.act_window">
+      <field name="name">Facturas Wisedat</field>
+      <field name="res_model">tobacco.wisedat.invoice</field>
+      <field name="view_mode">list,form</field>
+    </record>
+  </data>
+</odoo>

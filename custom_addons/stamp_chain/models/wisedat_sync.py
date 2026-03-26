@@ -4,7 +4,9 @@ from odoo.exceptions import UserError
 import requests
 import logging
 import time
+import json
 import base64
+from datetime import timedelta
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_v1_5
 
@@ -20,6 +22,9 @@ class WisedatConfig(models.Model):
     API_PAGE_SIZE = 200
     MAX_RETRIES = 3
     RETRY_BACKOFF = 2.0
+
+    # — Session HTTP (classe, nao instancia — V10) —
+    _http_session = None
 
     name = fields.Char(
         string='Nome',
@@ -87,25 +92,57 @@ class WisedatConfig(models.Model):
         default=True,
     )
 
-    # — Campos de progresso sync —
+    # — Progresso clientes —
     sync_last_page = fields.Integer(
-        string='Ultima Pagina Sincronizada',
-        default=0,
-        readonly=True,
-    )
+        default=0, readonly=True)
     sync_total_pages = fields.Integer(
-        string='Total Paginas',
-        default=0,
-        readonly=True,
-    )
+        default=0, readonly=True)
     sync_progress = fields.Integer(
-        string='Clientes Sincronizados',
-        default=0,
-        readonly=True,
-    )
+        default=0, readonly=True)
     sync_errors = fields.Integer(
-        string='Erros Sync',
-        default=0,
+        default=0, readonly=True)
+    last_sync_customers = fields.Integer(
+        default=0, readonly=True)
+    last_sync_errors = fields.Integer(
+        default=0, readonly=True)
+    last_sync_pages = fields.Integer(
+        default=0, readonly=True)
+
+    # — Progresso produtos —
+    product_sync_last_page = fields.Integer(
+        default=0, readonly=True)
+    product_sync_total_pages = fields.Integer(
+        default=0, readonly=True)
+    product_sync_progress = fields.Integer(
+        default=0, readonly=True)
+    product_sync_errors = fields.Integer(
+        default=0, readonly=True)
+    last_sync_products = fields.Integer(
+        default=0, readonly=True)
+
+    # — Progresso facturas —
+    invoice_sync_last_page = fields.Integer(
+        default=0, readonly=True)
+    invoice_sync_total_pages = fields.Integer(
+        default=0, readonly=True)
+    invoice_sync_progress = fields.Integer(
+        default=0, readonly=True)
+    invoice_sync_errors = fields.Integer(
+        default=0, readonly=True)
+    last_sync_invoices = fields.Integer(
+        default=0, readonly=True)
+
+    # — Fase cron —
+    sync_phase = fields.Selection([
+        ('idle', 'Parado'),
+        ('categories', 'Categorias'),
+        ('customers', 'Clientes'),
+        ('products', 'Produtos'),
+        ('stock', 'Stock'),
+        ('invoices', 'Facturas'),
+    ], default='idle', readonly=True)
+    sync_phase_started = fields.Datetime(
+        string='Fase Iniciada Em',
         readonly=True,
     )
 
@@ -194,13 +231,11 @@ class WisedatConfig(models.Model):
             'Authorization': f'Bearer {token}',
         }
 
-    # ── Connection pooling ───────────────────
+    # ── Connection pooling (V10 — classe) ────
 
-    def _get_session(self):
-        """requests.Session com connection pooling."""
-        if not hasattr(self, '_http_session'):
-            self._http_session = None
-        if self._http_session is None:
+    @classmethod
+    def _get_session(cls):
+        if cls._http_session is None:
             session = requests.Session()
             adapter = requests.adapters.HTTPAdapter(
                 pool_connections=1,
@@ -209,14 +244,13 @@ class WisedatConfig(models.Model):
             )
             session.mount('http://', adapter)
             session.mount('https://', adapter)
-            self._http_session = session
-        return self._http_session
+            cls._http_session = session
+        return cls._http_session
 
-    # ── API call com retry ───────────────────
+    # ── API calls ────────────────────────────
 
     def _api_call(self, method, endpoint,
                   payload=None):
-        """API call basico (sem retry)."""
         url = f'{self.api_url}{endpoint}'
         try:
             response = requests.request(
@@ -242,14 +276,12 @@ class WisedatConfig(models.Model):
                 'Wisedat API error: %s', e
             )
             raise UserError(
-                f'Erro na comunicacao com Wisedat: '
-                f'{str(e)}'
+                f'Erro Wisedat: {str(e)}'
             )
 
     def _api_call_with_retry(self, method,
                               endpoint,
                               payload=None):
-        """API call com retry e session pooling."""
         session = self._get_session()
         url = f'{self.api_url}{endpoint}'
         for attempt in range(self.MAX_RETRIES):
@@ -291,11 +323,7 @@ class WisedatConfig(models.Model):
                         'retries: %s',
                         self.MAX_RETRIES, e
                     )
-                    raise UserError(
-                        f'Erro Wisedat apos '
-                        f'{self.MAX_RETRIES} '
-                        f'tentativas: {e}'
-                    )
+                    raise
 
     # ── Armazens ─────────────────────────────
 
@@ -312,24 +340,123 @@ class WisedatConfig(models.Model):
         )
         if not mapping:
             raise UserError(
-                'Armazem nao mapeado para Wisedat. '
-                'Configure em Definicoes > Armazens.'
+                'Armazem nao mapeado para Wisedat.'
             )
         return mapping[0].wisedat_warehouse_code
 
-    # ── Sync clientes (chunked) ──────────────
+    # ── Categorias (V4 — com paginacao) ──────
+
+    def _sync_categories(self):
+        _logger.info('StampChain: sync categorias')
+        Category = self.env['product.category']
+        all_categories = []
+        page = 1
+        try:
+            while True:
+                response = (
+                    self._api_call_with_retry(
+                        'GET',
+                        f'/categories?limit=200'
+                        f'&page={page}'
+                    )
+                )
+                categories = (
+                    response.get('categories', [])
+                    if isinstance(response, dict)
+                    else response
+                    if isinstance(response, list)
+                    else []
+                )
+                all_categories.extend(categories)
+                pagination = (
+                    response.get('pagination', {})
+                    if isinstance(response, dict)
+                    else {}
+                )
+                total_pages = pagination.get(
+                    'number_pages', 1
+                )
+                if page >= total_pages:
+                    break
+                page += 1
+            # Pass 1: pais
+            for cat in all_categories:
+                if not cat.get('id_parent'):
+                    self._sync_single_category(
+                        cat, Category
+                    )
+            self.env.cr.commit()
+            # Pass 2: filhos
+            for cat in all_categories:
+                if cat.get('id_parent'):
+                    self._sync_single_category(
+                        cat, Category
+                    )
+            self.env.cr.commit()
+            self.env.invalidate_all()
+            _logger.info(
+                'StampChain: %d categorias sync',
+                len(all_categories)
+            )
+        except Exception as e:
+            _logger.error(
+                'Erro sync categorias: %s', e
+            )
+            self.sync_status = 'error'
+            self.env.cr.commit()
+            raise
+
+    def _sync_single_category(self, cat_data,
+                                Category):
+        existing = Category.search([
+            ('wisedat_id', '=', cat_data['id'])
+        ], limit=1)
+        parent = False
+        if cat_data.get('id_parent'):
+            parent_cat = Category.search([
+                ('wisedat_id', '=',
+                 cat_data['id_parent'])
+            ], limit=1)
+            parent = (
+                parent_cat.id if parent_cat
+                else False
+            )
+        vals = {
+            'name': cat_data.get('name', ''),
+            'wisedat_id': cat_data['id'],
+        }
+        if parent:
+            vals['parent_id'] = parent
+        if existing:
+            existing.write(vals)
+        else:
+            Category.create(vals)
+
+    # ── Clientes (chunked + incremental) ─────
 
     def _prepare_customer_vals(self, cust_data):
-        """Prepara vals para um cliente."""
         billing = (
             cust_data.get('billing_address', {})
             or {}
         )
+        country_code = 'PT'
+        country_obj = billing.get('country', {})
+        if isinstance(country_obj, dict):
+            country_code = country_obj.get(
+                'iso_3166_1', 'PT'
+            )
+        country_id = self.env[
+            'res.country'
+        ].search([
+            ('code', '=', country_code)
+        ], limit=1)
         return {
             'name': cust_data.get('name', ''),
             'vat': cust_data.get('tax_id'),
             'email': cust_data.get('email'),
             'phone': cust_data.get('phone'),
+            'website': cust_data.get('website'),
+            'comment': cust_data.get('notes'),
             'customer_rank': 1,
             'wisedat_id': cust_data.get('id'),
             'wisedat_synced': True,
@@ -337,38 +464,49 @@ class WisedatConfig(models.Model):
                 fields.Datetime.now(),
             'street': billing.get('street', ''),
             'city': billing.get('city', ''),
-            'zip': billing.get('postal_code', ''),
+            'zip': billing.get(
+                'postal_code', ''
+            ),
+            'country_id': (
+                country_id.id
+                if country_id else False
+            ),
         }
 
     def _sync_customers_batch(self):
-        """Processa BATCH_PAGES paginas.
-        Retorna True se ha mais trabalho."""
         Partner = self.env['res.partner']
-        start_page = (self.sync_last_page or 0) + 1
+        start_page = (
+            (self.sync_last_page or 0) + 1
+        )
         synced = errors = 0
-
         for page_offset in range(
             self.SYNC_BATCH_PAGES
         ):
             page = start_page + page_offset
+            endpoint = (
+                f'/customers?limit='
+                f'{self.API_PAGE_SIZE}'
+                f'&page={page}'
+            )
+            if self.last_sync_date:
+                endpoint += (
+                    f'&modified_since='
+                    f'{self.last_sync_date.isoformat()}'
+                )
             try:
                 response = (
                     self._api_call_with_retry(
-                        'GET',
-                        f'/customers?limit='
-                        f'{self.API_PAGE_SIZE}'
-                        f'&page={page}'
+                        'GET', endpoint
                     )
                 )
             except Exception as e:
                 _logger.error(
-                    'API error pagina %d: %s',
+                    'API error clientes pag %d: %s',
                     page, e
                 )
                 self.sync_status = 'error'
                 self.env.cr.commit()
                 return False
-
             customers = (
                 response.get('customers', [])
                 if isinstance(response, dict)
@@ -384,21 +522,17 @@ class WisedatConfig(models.Model):
             total_pages = pagination.get(
                 'number_pages', 1
             )
-
             if not customers:
                 self._finish_customer_sync(
                     synced, errors
                 )
                 return False
-
             if page == start_page:
                 self.write({
                     'sync_total_pages': total_pages,
-                    'sync_status': 'syncing',
                 })
                 self.env.cr.commit()
-
-            # C3: Bulk search
+            # Bulk search
             wisedat_ids = [
                 c.get('id') for c in customers
                 if c.get('id')
@@ -409,8 +543,6 @@ class WisedatConfig(models.Model):
             existing_map = {
                 p.wisedat_id: p for p in existing
             }
-
-            # C4: Batch create
             create_vals_list = []
             for cust in customers:
                 try:
@@ -439,14 +571,9 @@ class WisedatConfig(models.Model):
                         'Erro cliente %s: %s',
                         cust.get('id'), e
                     )
-
             if create_vals_list:
                 Partner.create(create_vals_list)
-
-            # C1: Commit apos cada pagina
             self.env.cr.commit()
-
-            # C8: Checkpoint
             self.write({
                 'sync_last_page': page,
                 'sync_progress': (
@@ -459,27 +586,19 @@ class WisedatConfig(models.Model):
                 ),
             })
             self.env.cr.commit()
-
-            # C2: Limpar cache ORM
             self.env.invalidate_all()
-
             _logger.info(
-                'StampChain: clientes pagina '
-                '%d/%d — %d sync, %d erros',
-                page, total_pages, synced, errors
+                'StampChain: clientes pag %d/%d',
+                page, total_pages
             )
-
             synced = errors = 0
-
             if page >= total_pages:
                 self._finish_customer_sync(0, 0)
                 return False
-
         return True
 
     def _finish_customer_sync(self, synced,
                                errors):
-        """Reset checkpoint e finaliza."""
         total_synced = (
             (self.sync_progress or 0) + synced
         )
@@ -496,15 +615,15 @@ class WisedatConfig(models.Model):
                 'ok' if total_errors == 0
                 else 'error'
             ),
+            'last_sync_customers': total_synced,
+            'last_sync_errors': total_errors,
+            'last_sync_pages': (
+                self.sync_total_pages or 0
+            ),
         })
         self.env.cr.commit()
-        _logger.info(
-            'StampChain: sync clientes completa '
-            '— %d sync, %d erros',
-            total_synced, total_errors
-        )
 
-    # — Legacy (mantido para referencia) —
+    # Legacy
     def _sync_single_customer(self, cust_data):
         vals = self._prepare_customer_vals(
             cust_data
@@ -526,16 +645,82 @@ class WisedatConfig(models.Model):
         else:
             Partner.create(vals)
 
-    # ── Sync produtos ────────────────────────
+    # ── Produtos (chunked) ───────────────────
 
-    def _sync_products(self):
-        _logger.info(
-            'StampChain: sync artigos Wisedat->Odoo'
+    def _prepare_product_vals(self, item_data):
+        categ_id = False
+        categories = item_data.get(
+            'categories', []
         )
-        try:
-            response = self._api_call(
-                'GET', '/products'
+        if categories:
+            main_cat = categories[0]
+            cat = self.env[
+                'product.category'
+            ].search([
+                ('wisedat_id', '=',
+                 main_cat.get('id'))
+            ], limit=1)
+            if cat:
+                categ_id = cat.id
+        vals = {
+            'name': item_data.get(
+                'description',
+                item_data.get('name', '')
+            ),
+            'default_code': item_data.get('name'),
+            'list_price': item_data.get(
+                'price', 0
+            ),
+            'active': item_data.get(
+                'active', True
+            ),
+            'wisedat_id': item_data.get('id'),
+            'wisedat_synced': True,
+            'wisedat_sync_date':
+                fields.Datetime.now(),
+        }
+        if categ_id:
+            vals['categ_id'] = categ_id
+        if item_data.get('parent_id'):
+            vals['wisedat_parent_id'] = (
+                item_data['parent_id']
             )
+        return vals
+
+    def _sync_products_batch(self):
+        Product = self.env['product.product']
+        start_page = (
+            (self.product_sync_last_page or 0) + 1
+        )
+        synced = errors = 0
+        for page_offset in range(
+            self.SYNC_BATCH_PAGES
+        ):
+            page = start_page + page_offset
+            endpoint = (
+                f'/products?limit='
+                f'{self.API_PAGE_SIZE}'
+                f'&page={page}'
+            )
+            if self.last_sync_date:
+                endpoint += (
+                    f'&modified_since='
+                    f'{self.last_sync_date.isoformat()}'
+                )
+            try:
+                response = (
+                    self._api_call_with_retry(
+                        'GET', endpoint
+                    )
+                )
+            except Exception as e:
+                _logger.error(
+                    'API error produtos pag %d: %s',
+                    page, e
+                )
+                self.sync_status = 'error'
+                self.env.cr.commit()
+                return False
             items = (
                 response.get('products', [])
                 if isinstance(response, dict)
@@ -543,51 +728,144 @@ class WisedatConfig(models.Model):
                 if isinstance(response, list)
                 else []
             )
-            synced = errors = 0
+            pagination = (
+                response.get('pagination', {})
+                if isinstance(response, dict)
+                else {}
+            )
+            total_pages = pagination.get(
+                'number_pages', 1
+            )
+            if not items:
+                self._finish_product_sync(
+                    synced, errors
+                )
+                return False
+            if page == start_page:
+                self.write({
+                    'product_sync_total_pages':
+                        total_pages,
+                })
+                self.env.cr.commit()
+            wisedat_ids = [
+                i.get('id') for i in items
+                if i.get('id')
+            ]
+            existing = Product.search([
+                ('wisedat_id', 'in', wisedat_ids)
+            ])
+            existing_map = {
+                p.wisedat_id: p for p in existing
+            }
+            create_vals_list = []
             for item in items:
                 try:
-                    self._sync_single_product(item)
+                    vals = (
+                        self._prepare_product_vals(
+                            item
+                        )
+                    )
+                    product = existing_map.get(
+                        item.get('id')
+                    )
+                    if not product:
+                        code = item.get('name')
+                        if code:
+                            product = Product.search([
+                                ('default_code', '=',
+                                 code),
+                                ('wisedat_id', '=',
+                                 False),
+                            ], limit=1)
+                    if product:
+                        product.write(vals)
+                    else:
+                        vals.update({
+                            'type': 'product',
+                            'sale_ok': True,
+                        })
+                        create_vals_list.append(vals)
                     synced += 1
                 except Exception as e:
                     errors += 1
                     _logger.error(
-                        'Erro sync artigo %s: %s',
+                        'Erro produto %s: %s',
                         item.get('id'), e
                     )
-            return synced, errors
-        except UserError:
-            raise
+            if create_vals_list:
+                Product.create(create_vals_list)
+            self.env.cr.commit()
+            self.write({
+                'product_sync_last_page': page,
+                'product_sync_progress': (
+                    (self.product_sync_progress
+                     or 0) + synced
+                ),
+                'product_sync_errors': (
+                    (self.product_sync_errors
+                     or 0) + errors
+                ),
+            })
+            self.env.cr.commit()
+            self.env.invalidate_all()
+            _logger.info(
+                'StampChain: produtos pag %d/%d',
+                page, total_pages
+            )
+            synced = errors = 0
+            if page >= total_pages:
+                self._finish_product_sync(0, 0)
+                return False
+        return True
+
+    def _finish_product_sync(self, synced,
+                              errors):
+        total_synced = (
+            (self.product_sync_progress or 0)
+            + synced
+        )
+        total_errors = (
+            (self.product_sync_errors or 0)
+            + errors
+        )
+        self.write({
+            'product_sync_last_page': 0,
+            'product_sync_total_pages': 0,
+            'product_sync_progress': 0,
+            'product_sync_errors': 0,
+            'last_sync_products': total_synced,
+        })
+        self.env.cr.commit()
 
     def _sync_single_product(self, item_data):
+        vals = self._prepare_product_vals(
+            item_data
+        )
         Product = self.env['product.product']
         product = Product.search([
             ('default_code', '=',
              item_data.get('name'))
         ], limit=1)
-        vals = {
-            'name': item_data.get(
-                'description',
-                item_data.get('name', '')
-            ),
-            'default_code': item_data.get('name'),
-            'list_price': item_data.get('price', 0),
-            'type': 'product',
-            'sale_ok': True,
-        }
         if product:
             product.write(vals)
         else:
+            vals.update({
+                'type': 'product',
+                'sale_ok': True,
+            })
             Product.create(vals)
 
-    # ── Sync stock ───────────────────────────
+    # ── Stock (V3 — is_iec_product) ──────────
 
     def _sync_stock_by_warehouse(self):
         for mapping in self.warehouse_mapping_ids:
             try:
-                response = self._api_call(
-                    'GET',
-                    f'/products?warehouse='
-                    f'{mapping.wisedat_warehouse_code}'
+                response = (
+                    self._api_call_with_retry(
+                        'GET',
+                        f'/products?warehouse='
+                        f'{mapping.wisedat_warehouse_code}'
+                    )
                 )
                 items = (
                     response.get('products', [])
@@ -597,14 +875,39 @@ class WisedatConfig(models.Model):
                     else []
                 )
                 for item in items:
-                    self._update_odoo_stock(
-                        item, mapping.warehouse_id
+                    product = self.env[
+                        'product.product'
+                    ].search([
+                        ('wisedat_id', '=',
+                         item.get('id'))
+                    ], limit=1)
+                    if not product:
+                        continue
+                    wisedat_qty = sum(
+                        s.get('current_stock', 0)
+                        for s in item.get(
+                            'stocks', []
+                        )
                     )
+                    if product.is_iec_product:
+                        _logger.info(
+                            'Stock IEC %s: '
+                            'Wisedat=%d (info)',
+                            product.default_code,
+                            int(wisedat_qty)
+                        )
+                    else:
+                        self._update_odoo_stock(
+                            item,
+                            mapping.warehouse_id
+                        )
             except Exception as e:
                 _logger.error(
-                    'Erro sync stock armazem %s: %s',
-                    mapping.wisedat_warehouse_code, e
+                    'Erro sync stock %s: %s',
+                    mapping.wisedat_warehouse_code,
+                    e
                 )
+        self.env.cr.commit()
 
     def _update_odoo_stock(self, item_data,
                             warehouse):
@@ -619,10 +922,6 @@ class WisedatConfig(models.Model):
             limit=1,
         )
         if not product:
-            _logger.warning(
-                'Produto %s nao encontrado.',
-                product_code
-            )
             return
         total_qty = sum(
             s.get('current_stock', 0)
@@ -645,7 +944,190 @@ class WisedatConfig(models.Model):
                 'quantity': total_qty,
             })
 
-    # ── Guia de transporte ───────────────────
+    # ── Facturas (leitura) ───────────────────
+
+    def _sync_invoices_batch(self):
+        Invoice = self.env[
+            'tobacco.wisedat.invoice'
+        ]
+        start_page = (
+            (self.invoice_sync_last_page or 0) + 1
+        )
+        synced = errors = 0
+        for page_offset in range(
+            self.SYNC_BATCH_PAGES
+        ):
+            page = start_page + page_offset
+            endpoint = (
+                f'/salesinvoices?limit='
+                f'{self.API_PAGE_SIZE}'
+                f'&page={page}'
+            )
+            if self.last_sync_date:
+                endpoint += (
+                    f'&modified_since='
+                    f'{self.last_sync_date.isoformat()}'
+                )
+            try:
+                response = (
+                    self._api_call_with_retry(
+                        'GET', endpoint
+                    )
+                )
+            except Exception as e:
+                _logger.error(
+                    'API error facturas pag %d: %s',
+                    page, e
+                )
+                self.sync_status = 'error'
+                self.env.cr.commit()
+                return False
+            invoices = (
+                response.get('salesinvoices', [])
+                if isinstance(response, dict)
+                else response
+                if isinstance(response, list)
+                else []
+            )
+            pagination = (
+                response.get('pagination', {})
+                if isinstance(response, dict)
+                else {}
+            )
+            total_pages = pagination.get(
+                'number_pages', 1
+            )
+            if not invoices:
+                self._finish_invoice_sync(
+                    synced, errors
+                )
+                return False
+            if page == start_page:
+                self.write({
+                    'invoice_sync_total_pages':
+                        total_pages,
+                })
+                self.env.cr.commit()
+            wisedat_ids = [
+                str(i.get('id')) for i in invoices
+                if i.get('id')
+            ]
+            existing = Invoice.search([
+                ('wisedat_id', 'in', wisedat_ids)
+            ])
+            existing_map = {
+                i.wisedat_id: i for i in existing
+            }
+            create_vals_list = []
+            for inv in invoices:
+                try:
+                    inv_id = str(inv.get('id'))
+                    customer = False
+                    cust_data = inv.get(
+                        'customer', {}
+                    )
+                    if isinstance(cust_data, dict):
+                        customer = self.env[
+                            'res.partner'
+                        ].search([
+                            ('wisedat_id', '=',
+                             cust_data.get('id'))
+                        ], limit=1)
+                    vals = {
+                        'wisedat_id': inv_id,
+                        'document_number': str(
+                            inv.get(
+                                'document_number',
+                                ''
+                            )
+                        ),
+                        'date': inv.get('date'),
+                        'customer_id': (
+                            customer.id
+                            if customer else False
+                        ),
+                        'total': inv.get(
+                            'total', 0
+                        ),
+                        'merchandise': inv.get(
+                            'merchandise', 0
+                        ),
+                        'taxes': inv.get(
+                            'taxes', 0
+                        ),
+                        'currency': str(
+                            inv.get(
+                                'currency', 'EUR'
+                            )
+                        ),
+                        'wisedat_config_id':
+                            self.id,
+                        'raw_data': json.dumps(
+                            inv, default=str
+                        ),
+                    }
+                    existing_inv = (
+                        existing_map.get(inv_id)
+                    )
+                    if existing_inv:
+                        existing_inv.write(vals)
+                    else:
+                        create_vals_list.append(
+                            vals
+                        )
+                    synced += 1
+                except Exception as e:
+                    errors += 1
+                    _logger.error(
+                        'Erro factura %s: %s',
+                        inv.get('id'), e
+                    )
+            if create_vals_list:
+                Invoice.create(create_vals_list)
+            self.env.cr.commit()
+            self.write({
+                'invoice_sync_last_page': page,
+                'invoice_sync_progress': (
+                    (self.invoice_sync_progress
+                     or 0) + synced
+                ),
+                'invoice_sync_errors': (
+                    (self.invoice_sync_errors
+                     or 0) + errors
+                ),
+            })
+            self.env.cr.commit()
+            self.env.invalidate_all()
+            _logger.info(
+                'StampChain: facturas pag %d/%d',
+                page, total_pages
+            )
+            synced = errors = 0
+            if page >= total_pages:
+                self._finish_invoice_sync(0, 0)
+                return False
+        return True
+
+    def _finish_invoice_sync(self, synced,
+                              errors):
+        total_synced = (
+            (self.invoice_sync_progress or 0)
+            + synced
+        )
+        total_errors = (
+            (self.invoice_sync_errors or 0)
+            + errors
+        )
+        self.write({
+            'invoice_sync_last_page': 0,
+            'invoice_sync_total_pages': 0,
+            'invoice_sync_progress': 0,
+            'invoice_sync_errors': 0,
+            'last_sync_invoices': total_synced,
+        })
+        self.env.cr.commit()
+
+    # ── Guia transporte ──────────────────────
 
     def _create_wisedat_transport_guide(
         self, picking_id
@@ -676,8 +1158,7 @@ class WisedatConfig(models.Model):
                         product.wisedat_id
                         if hasattr(
                             product, 'wisedat_id'
-                        )
-                        else None
+                        ) else None
                     ),
                     'description': product.name,
                     'quantity': move.quantity_done,
@@ -694,8 +1175,7 @@ class WisedatConfig(models.Model):
             sale.partner_id.wisedat_id
             if hasattr(
                 sale.partner_id, 'wisedat_id'
-            )
-            else None
+            ) else None
         )
         if not wisedat_customer_id:
             raise UserError(
@@ -714,7 +1194,7 @@ class WisedatConfig(models.Model):
         }
         try:
             response = self._api_call(
-                'POST', '/movementsofgoods',
+                'POST', '/movementofgoods',
                 payload
             )
             wisedat_doc_id = response.get('id')
@@ -723,8 +1203,7 @@ class WisedatConfig(models.Model):
             )
             picking.message_post(
                 body=(
-                    f'Guia de Transporte criada '
-                    f'no Wisedat: {wisedat_doc_id}.'
+                    f'Guia Wisedat: {wisedat_doc_id}'
                 ),
             )
             return wisedat_doc_id
@@ -737,26 +1216,32 @@ class WisedatConfig(models.Model):
     # ── Actions ──────────────────────────────
 
     def action_full_sync(self):
-        """Sync completa sincrona."""
         self.write({
             'sync_status': 'syncing',
+            'sync_phase': 'categories',
             'sync_last_page': 0,
             'sync_progress': 0,
             'sync_errors': 0,
+            'product_sync_last_page': 0,
+            'product_sync_progress': 0,
+            'product_sync_errors': 0,
+            'invoice_sync_last_page': 0,
+            'invoice_sync_progress': 0,
+            'invoice_sync_errors': 0,
         })
         self.env.cr.commit()
-        errors_total = 0
         try:
+            self._sync_categories()
             while self._sync_customers_batch():
                 pass
-            _, e2 = self._sync_products()
-            errors_total += e2
+            while self._sync_products_batch():
+                pass
             self._sync_stock_by_warehouse()
+            while self._sync_invoices_batch():
+                pass
             self.write({
-                'sync_status': (
-                    'ok' if errors_total == 0
-                    else 'error'
-                ),
+                'sync_status': 'ok',
+                'sync_phase': 'idle',
                 'last_sync_date':
                     fields.Datetime.now(),
             })
@@ -766,31 +1251,30 @@ class WisedatConfig(models.Model):
                 'tag': 'display_notification',
                 'params': {
                     'title': 'StampChain',
-                    'message': (
-                        f'Sincronizacao concluida. '
-                        f'Erros: {errors_total}'
-                    ),
-                    'type': (
-                        'success'
-                        if errors_total == 0
-                        else 'warning'
-                    ),
+                    'message': 'Sync completa.',
+                    'type': 'success',
                 },
             }
         except Exception:
             self.sync_status = 'error'
+            self.sync_phase = 'idle'
             self.env.cr.commit()
             raise
 
     def action_full_sync_background(self):
-        """Trigger sync via cron imediato.
-        C10: Sem threading."""
         self.ensure_one()
         self.write({
             'sync_status': 'syncing',
+            'sync_phase': 'categories',
             'sync_last_page': 0,
             'sync_progress': 0,
             'sync_errors': 0,
+            'product_sync_last_page': 0,
+            'product_sync_progress': 0,
+            'product_sync_errors': 0,
+            'invoice_sync_last_page': 0,
+            'invoice_sync_progress': 0,
+            'invoice_sync_errors': 0,
         })
         cron = self.env.ref(
             'stamp_chain.ir_cron_wisedat_sync'
@@ -802,8 +1286,7 @@ class WisedatConfig(models.Model):
             'params': {
                 'title': 'StampChain',
                 'message': (
-                    'Sincronizacao agendada. '
-                    'Sera executada em breve.'
+                    'Sincronizacao agendada.'
                 ),
                 'type': 'success',
             },
@@ -824,7 +1307,7 @@ class WisedatConfig(models.Model):
                 'params': {
                     'title': 'StampChain',
                     'message': (
-                        f'Ligacao estabelecida! '
+                        f'Ligacao OK! '
                         f'Empresa: {company_name}'
                     ),
                     'type': 'success',
@@ -841,37 +1324,106 @@ class WisedatConfig(models.Model):
                 },
             }
 
-    # ── Cron job (C9: @api.model) ────────────
+    # ── Cron faseado (V7 watchdog) ───────────
 
     @api.model
     def _cron_sync(self):
-        """Processa batch de paginas. Se ha mais,
-        agenda proximo cron em 2 min."""
         configs = self.search([
             ('active', '=', True)
         ])
         for config in configs:
+            # V7: watchdog
+            if (config.sync_phase != 'idle'
+                    and config.sync_phase_started
+                    and (fields.Datetime.now()
+                         - config.sync_phase_started)
+                    > timedelta(minutes=30)):
+                _logger.warning(
+                    'StampChain: fase %s presa. '
+                    'Reset.',
+                    config.sync_phase
+                )
+                config.write({
+                    'sync_phase': 'idle',
+                    'sync_status': 'error',
+                })
+                config.env.cr.commit()
             try:
                 config.sync_status = 'syncing'
                 config.env.cr.commit()
-                has_more = (
-                    config._sync_customers_batch()
-                )
-                if has_more:
-                    cron = self.env.ref(
-                        'stamp_chain.'
-                        'ir_cron_wisedat_sync'
-                    )
-                    cron.nextcall = (
-                        fields.Datetime.add(
+                # Fase 0: Categorias
+                if config.sync_phase in (
+                    'idle', 'categories'
+                ):
+                    config.write({
+                        'sync_phase': 'categories',
+                        'sync_phase_started':
                             fields.Datetime.now(),
-                            minutes=2,
-                        )
+                    })
+                    config.env.cr.commit()
+                    config._sync_categories()
+                    config.write({
+                        'sync_phase': 'customers',
+                        'sync_phase_started':
+                            fields.Datetime.now(),
+                    })
+                    config.env.cr.commit()
+                # Fase 1: Clientes
+                if (config.sync_phase == 'customers'
+                        and config.sync_customers):
+                    has_more = (
+                        config._sync_customers_batch()
                     )
-                    _logger.info(
-                        'StampChain: mais paginas, '
-                        'proximo cron em 2 min'
+                    if has_more:
+                        self._reschedule_cron(2)
+                        return
+                    config.write({
+                        'sync_phase': 'products',
+                        'sync_phase_started':
+                            fields.Datetime.now(),
+                    })
+                    config.env.cr.commit()
+                # Fase 2: Produtos
+                if (config.sync_phase == 'products'
+                        and config.sync_products):
+                    has_more = (
+                        config._sync_products_batch()
                     )
+                    if has_more:
+                        self._reschedule_cron(2)
+                        return
+                    config.write({
+                        'sync_phase': 'stock',
+                        'sync_phase_started':
+                            fields.Datetime.now(),
+                    })
+                    config.env.cr.commit()
+                # Fase 3: Stock
+                if config.sync_phase == 'stock':
+                    config._sync_stock_by_warehouse()
+                    config.write({
+                        'sync_phase': 'invoices',
+                        'sync_phase_started':
+                            fields.Datetime.now(),
+                    })
+                    config.env.cr.commit()
+                # Fase 4: Facturas
+                if (config.sync_phase == 'invoices'
+                        and config.sync_invoices):
+                    has_more = (
+                        config._sync_invoices_batch()
+                    )
+                    if has_more:
+                        self._reschedule_cron(2)
+                        return
+                # Concluido
+                config.write({
+                    'sync_status': 'ok',
+                    'sync_phase': 'idle',
+                    'sync_phase_started': False,
+                    'last_sync_date':
+                        fields.Datetime.now(),
+                })
                 config.env.cr.commit()
             except Exception as e:
                 config.env.cr.rollback()
@@ -879,7 +1431,20 @@ class WisedatConfig(models.Model):
                     'Cron sync erro: %s', e
                 )
                 try:
-                    config.sync_status = 'error'
+                    config.write({
+                        'sync_status': 'error',
+                        'sync_phase': 'idle',
+                        'sync_phase_started': False,
+                    })
                     config.env.cr.commit()
                 except Exception:
                     config.env.cr.rollback()
+
+    def _reschedule_cron(self, minutes=2):
+        cron = self.env.ref(
+            'stamp_chain.ir_cron_wisedat_sync'
+        )
+        cron.nextcall = (
+            fields.Datetime.now()
+            + timedelta(minutes=minutes)
+        )

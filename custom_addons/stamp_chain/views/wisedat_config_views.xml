@@ -37,14 +37,175 @@
                      decoration-warning="sync_status == 'syncing'"/>
             </group>
           </group>
-          <group invisible="sync_status != 'syncing'">
-            <group string="Progresso Sync">
-              <field name="sync_last_page" readonly="1"/>
-              <field name="sync_total_pages" readonly="1"/>
-              <field name="sync_progress" readonly="1"/>
-              <field name="sync_errors" readonly="1"/>
-            </group>
-          </group>
+          <!-- ============================================
+               STATE 2 — SYNCING (live progress)
+               Visible only when sync_status == 'syncing'
+               ============================================ -->
+          <div class="sc-sync-panel" invisible="sync_status != 'syncing'">
+            <div class="sc-sync-title">
+              <span class="sc-pulse-dot"/>
+              A Sincronizar...
+            </div>
+
+            <!-- Progress bar (CSS-driven, no JS needed) -->
+            <!-- We use invisible divs at fixed width thresholds -->
+            <div class="sc-sync-bar-track">
+              <!-- 0% — empty bar (fallback, always present) -->
+              <div class="sc-sync-bar-fill" style="width: 2%;"/>
+            </div>
+
+            <!-- Textual page counter as primary progress indicator -->
+            <div class="sc-sync-bar-text">
+              Pagina <field name="sync_last_page" readonly="1" class="d-inline" widget="integer"/>
+              de <field name="sync_total_pages" readonly="1" class="d-inline" widget="integer"/>
+            </div>
+
+            <!-- Metric cards grid -->
+            <div class="sc-sync-metrics" style="margin-top: 14px;">
+
+              <!-- Pages processed -->
+              <div class="sc-metric-card sc-metric-compact sc-metric-info">
+                <div class="sc-metric-label">Paginas</div>
+                <div class="sc-metric-value">
+                  <field name="sync_last_page" readonly="1" widget="integer" class="d-inline"/>
+                  /
+                  <field name="sync_total_pages" readonly="1" widget="integer" class="d-inline"/>
+                </div>
+              </div>
+
+              <!-- Customers synced so far -->
+              <div class="sc-metric-card sc-metric-compact sc-metric-ok">
+                <div class="sc-metric-label">Clientes</div>
+                <div class="sc-metric-value">
+                  <field name="sync_progress" readonly="1" widget="integer"/>
+                </div>
+              </div>
+
+              <!-- Errors so far -->
+              <!-- Show neutral when 0, red when > 0 -->
+              <div class="sc-metric-card sc-metric-compact" invisible="sync_errors != 0">
+                <div class="sc-metric-label">Erros</div>
+                <div class="sc-metric-value">0</div>
+              </div>
+              <div class="sc-metric-card sc-metric-compact sc-metric-err" invisible="sync_errors == 0">
+                <div class="sc-metric-label">Erros</div>
+                <div class="sc-metric-value">
+                  <field name="sync_errors" readonly="1" widget="integer"/>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- ============================================
+               STATE 1 — IDLE: OK (last sync succeeded)
+               Visible when sync_status == 'ok'
+               ============================================ -->
+          <div class="sc-sync-panel" invisible="sync_status != 'ok'">
+
+            <!-- Sub-state: never synced (no last_sync_date) -->
+            <div invisible="last_sync_date != False">
+              <div class="sc-sync-empty">
+                <div class="sc-sync-empty-icon">&#x2194;</div>
+                <div>Nenhuma sincronizacao realizada.</div>
+                <div style="margin-top: 4px; font-size: 12px;">
+                  Clique em "Sync Completa" para iniciar.
+                </div>
+              </div>
+            </div>
+
+            <!-- Sub-state: has synced before -->
+            <div invisible="last_sync_date == False">
+              <div class="sc-sync-title">
+                <span class="sc-badge sc-badge-ok">OK</span>
+                Ultima Sincronizacao
+              </div>
+
+              <div class="sc-sync-idle-row">
+                <span class="sc-sync-idle-label">Data</span>
+                <span class="sc-sync-idle-value">
+                  <field name="last_sync_date" readonly="1" widget="datetime"/>
+                </span>
+              </div>
+
+              <div class="sc-sync-idle-row">
+                <span class="sc-sync-idle-label">Clientes sincronizados</span>
+                <span class="sc-sync-idle-value">
+                  <field name="last_sync_customers" readonly="1" widget="integer"/>
+                </span>
+              </div>
+
+              <div class="sc-sync-idle-row">
+                <span class="sc-sync-idle-label">Paginas processadas</span>
+                <span class="sc-sync-idle-value">
+                  <field name="last_sync_pages" readonly="1" widget="integer"/>
+                </span>
+              </div>
+
+              <!-- Errors row: only if > 0 -->
+              <div class="sc-sync-idle-row" invisible="last_sync_errors == 0">
+                <span class="sc-sync-idle-label">Erros</span>
+                <span class="sc-sync-idle-value err">
+                  <field name="last_sync_errors" readonly="1" widget="integer"/>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- ============================================
+               STATE 1 — IDLE: ERROR (last sync had errors)
+               Visible when sync_status == 'error'
+               ============================================ -->
+          <div class="sc-sync-panel" invisible="sync_status != 'error'" style="border-left: 3px solid var(--sc-red);">
+
+            <!-- Sub-state: never synced -->
+            <div invisible="last_sync_date != False">
+              <div class="sc-sync-empty">
+                <div class="sc-sync-empty-icon">&#x26A0;</div>
+                <div>Erro na configuracao. Verifique as credenciais.</div>
+              </div>
+            </div>
+
+            <!-- Sub-state: synced with errors -->
+            <div invisible="last_sync_date == False">
+              <div class="sc-sync-title">
+                <span class="sc-badge sc-badge-err">Erro</span>
+                Ultima Sincronizacao
+              </div>
+
+              <!-- Error alert banner -->
+              <div class="sc-hh-feedback err" style="margin-bottom: 14px;">
+                <div class="sc-hh-feedback-title">
+                  Sincronizacao concluida com erros
+                </div>
+                <div class="sc-hh-feedback-sub">
+                  Verifique o log do servidor para detalhes. Volte a executar a sync.
+                </div>
+              </div>
+
+              <div class="sc-sync-idle-row">
+                <span class="sc-sync-idle-label">Data</span>
+                <span class="sc-sync-idle-value">
+                  <field name="last_sync_date" readonly="1" widget="datetime"/>
+                </span>
+              </div>
+
+              <div class="sc-sync-idle-row">
+                <span class="sc-sync-idle-label">Clientes sincronizados</span>
+                <span class="sc-sync-idle-value">
+                  <field name="last_sync_customers" readonly="1" widget="integer"/>
+                </span>
+              </div>
+
+              <div class="sc-sync-idle-row">
+                <span class="sc-sync-idle-label">Erros</span>
+                <span class="sc-sync-idle-value err">
+                  <field name="last_sync_errors" readonly="1" widget="integer"/>
+                </span>
+              </div>
+            </div>
+          </div>
+
           <notebook>
             <page string="Armazens" name="warehouses">
               <field name="warehouse_mapping_ids">
