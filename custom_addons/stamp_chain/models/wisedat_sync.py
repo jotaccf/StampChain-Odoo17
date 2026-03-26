@@ -75,6 +75,10 @@ class WisedatConfig(models.Model):
        default='ok',
        readonly=True,
     )
+    active = fields.Boolean(
+        string='Activo',
+        default=True,
+    )
 
     _jwt_tokens = {}
 
