@@ -77,6 +77,32 @@ class WisedatConfig(models.Model):
     ], string='Frequencia',
        default='realtime',
     )
+
+    # — Filtro tipo entidade (sync clientes) —
+    sync_entity_cliente_final = fields.Boolean(
+        string='Cliente Final (0001)',
+        default=False,
+        help='Sincronizar clientes do tipo '
+             'Cliente Final.',
+    )
+    sync_entity_revendedor = fields.Boolean(
+        string='Revendedor (0002)',
+        default=True,
+        help='Sincronizar clientes do tipo '
+             'Revendedor.',
+    )
+    sync_entity_grossista = fields.Boolean(
+        string='Grossista (0003)',
+        default=True,
+        help='Sincronizar clientes do tipo '
+             'Grossista.',
+    )
+    sync_entity_distribuicao = fields.Boolean(
+        string='Distribuicao (0004)',
+        default=True,
+        help='Sincronizar clientes do tipo '
+             'Distribuicao.',
+    )
     last_sync_date = fields.Datetime(
         string='Ultima Sincronizacao',
         readonly=True,
@@ -455,6 +481,97 @@ class WisedatConfig(models.Model):
         else:
             Category.create(vals)
 
+    # ── Filtro entidade ──────────────────────
+
+    def _get_allowed_entity_types(self):
+        """Retorna set de tipos de entidade
+        permitidos para sync, baseado nos
+        checkboxes do config."""
+        allowed = set()
+        if self.sync_entity_cliente_final:
+            allowed.add('0001')
+        if self.sync_entity_revendedor:
+            allowed.add('0002')
+        if self.sync_entity_grossista:
+            allowed.add('0003')
+        if self.sync_entity_distribuicao:
+            allowed.add('0004')
+        return allowed
+
+    def _fetch_customer_entity_type(
+        self, wisedat_customer_id
+    ):
+        """Faz GET /customers/{id} para obter
+        o entity_type de um cliente individual.
+        Retorna o codigo (str) ou False."""
+        try:
+            data = self._api_call_with_retry(
+                'GET',
+                f'/customers/{wisedat_customer_id}'
+            )
+            # Normalizar: pode vir como dict
+            # directo ou dentro de 'customer'
+            customer = (
+                data.get('customer', data)
+                if isinstance(data, dict)
+                else data
+            )
+            if isinstance(customer, dict):
+                raw = customer.get(
+                    'entity_type',
+                    customer.get('entitytype', '')
+                )
+                return str(raw).strip() if raw else False
+            return False
+        except Exception as e:
+            _logger.warning(
+                'Erro ao obter entity_type '
+                'cliente %s: %s',
+                wisedat_customer_id, e
+            )
+            return False
+
+    def action_classify_entity_types(self):
+        """Botao 'Classificar Entidades' —
+        faz GET individual para cada parceiro
+        sem wisedat_entity_type definido."""
+        self.ensure_one()
+        partners = self.env['res.partner'].search([
+            ('wisedat_id', '!=', 0),
+            ('wisedat_entity_type', '=', False),
+        ])
+        classified = 0
+        for partner in partners:
+            entity_type = (
+                self._fetch_customer_entity_type(
+                    partner.wisedat_id
+                )
+            )
+            if entity_type:
+                partner.wisedat_entity_type = (
+                    entity_type
+                )
+                classified += 1
+            if classified % 50 == 0:
+                self.env.cr.commit()
+        self.env.cr.commit()
+        _logger.info(
+            'StampChain: %d parceiros classificados',
+            classified
+        )
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': 'StampChain',
+                'message': (
+                    f'{classified} clientes '
+                    f'classificados com sucesso.'
+                ),
+                'type': 'success',
+            },
+        }
+
     # ── Clientes (chunked + incremental) ─────
 
     def _prepare_customer_vals(self, cust_data):
@@ -569,6 +686,11 @@ class WisedatConfig(models.Model):
                     'sync_total_records': total_records,
                 })
                 self.env.cr.commit()
+            # Tipos de entidade permitidos
+            allowed_types = (
+                self._get_allowed_entity_types()
+            )
+            filtering_active = bool(allowed_types)
             # Bulk search
             wisedat_ids = [
                 c.get('id') for c in customers
@@ -581,15 +703,28 @@ class WisedatConfig(models.Model):
                 p.wisedat_id: p for p in existing
             }
             create_vals_list = []
+            skipped = 0
             for cust in customers:
                 try:
+                    cust_id = cust.get('id')
+                    partner = existing_map.get(
+                        cust_id
+                    )
+                    # Filtro entidade: parceiro
+                    # existente com tipo conhecido
+                    if (filtering_active
+                            and partner
+                            and partner
+                            .wisedat_entity_type
+                            and partner
+                            .wisedat_entity_type
+                            not in allowed_types):
+                        skipped += 1
+                        continue
                     vals = (
                         self._prepare_customer_vals(
                             cust
                         )
-                    )
-                    partner = existing_map.get(
-                        cust.get('id')
                     )
                     if (not partner
                             and vals.get('vat')):
@@ -598,10 +733,19 @@ class WisedatConfig(models.Model):
                              vals['vat'])
                         ], limit=1)
                     if partner:
+                        # Parceiro existente com tipo
+                        # conhecido e fora do filtro
+                        if (filtering_active
+                                and partner
+                                .wisedat_entity_type
+                                and partner
+                                .wisedat_entity_type
+                                not in allowed_types):
+                            skipped += 1
+                            continue
                         try:
                             partner.write(vals)
                         except (ValidationError, Exception) as e:
-                            # VAT invalido — tentar sem VAT
                             _logger.warning(
                                 'VAT invalido %s, '
                                 'sync sem VAT: %s',
@@ -610,6 +754,31 @@ class WisedatConfig(models.Model):
                             vals['vat'] = False
                             partner.write(vals)
                     else:
+                        # Cliente novo: verificar
+                        # entity_type via GET
+                        # individual antes de criar
+                        if filtering_active and cust_id:
+                            etype = (
+                                self
+                                ._fetch_customer_entity_type(
+                                    cust_id
+                                )
+                            )
+                            if etype:
+                                vals[
+                                    'wisedat_entity_type'
+                                ] = etype
+                                if (etype
+                                        not in
+                                        allowed_types):
+                                    skipped += 1
+                                    _logger.debug(
+                                        'Cliente %s '
+                                        'tipo %s '
+                                        'ignorado',
+                                        cust_id, etype
+                                    )
+                                    continue
                         create_vals_list.append(vals)
                     synced += 1
                 except Exception as e:
@@ -618,6 +787,12 @@ class WisedatConfig(models.Model):
                         'Erro cliente %s: %s',
                         cust.get('id'), e
                     )
+            if skipped:
+                _logger.info(
+                    'StampChain: %d clientes '
+                    'ignorados (tipo entidade)',
+                    skipped
+                )
             if create_vals_list:
                 try:
                     Partner.create(create_vals_list)
@@ -630,7 +805,6 @@ class WisedatConfig(models.Model):
                         try:
                             Partner.create(single_vals)
                         except (ValidationError, Exception) as e:
-                            # VAT invalido — criar sem VAT
                             _logger.warning(
                                 'VAT invalido %s, '
                                 'criar sem VAT: %s',

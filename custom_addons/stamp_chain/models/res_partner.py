@@ -26,3 +26,14 @@ class ResPartner(models.Model):
         string='Data Ultima Sincronizacao',
         readonly=True,
     )
+    wisedat_entity_type = fields.Selection([
+        ('0001', 'Cliente Final'),
+        ('0002', 'Revendedor'),
+        ('0003', 'Grossista'),
+        ('0004', 'Distribuicao'),
+    ], string='Tipo Entidade Wisedat',
+       readonly=True,
+       index=True,
+       help='Tipo de entidade no Wisedat. '
+            'Obtido via GET /customers/{id}.',
+    )
