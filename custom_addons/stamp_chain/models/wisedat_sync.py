@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import models, fields, api
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 import requests
 import logging
 import time
@@ -489,9 +489,19 @@ class WisedatConfig(models.Model):
         ].search([
             ('code', '=', country_code)
         ], limit=1)
+        # VAT prefix fix — Wisedat envia sem prefixo
+        raw_vat = (
+            cust_data.get('tax_id') or ''
+        ).strip()
+        if raw_vat:
+            if not raw_vat[:2].isalpha():
+                raw_vat = country_code + raw_vat
+        else:
+            raw_vat = False
+
         return {
             'name': cust_data.get('name', ''),
-            'vat': cust_data.get('tax_id'),
+            'vat': raw_vat,
             'email': cust_data.get('email'),
             'phone': cust_data.get('phone'),
             'website': cust_data.get('website'),
@@ -598,13 +608,23 @@ class WisedatConfig(models.Model):
                         cust.get('id')
                     )
                     if (not partner
-                            and cust.get('tax_id')):
+                            and vals.get('vat')):
                         partner = Partner.search([
                             ('vat', '=',
-                             cust['tax_id'])
+                             vals['vat'])
                         ], limit=1)
                     if partner:
-                        partner.write(vals)
+                        try:
+                            partner.write(vals)
+                        except (ValidationError, Exception) as e:
+                            # VAT invalido — tentar sem VAT
+                            _logger.warning(
+                                'VAT invalido %s, '
+                                'sync sem VAT: %s',
+                                vals.get('vat'), e
+                            )
+                            vals['vat'] = False
+                            partner.write(vals)
                     else:
                         create_vals_list.append(vals)
                     synced += 1
@@ -615,7 +635,36 @@ class WisedatConfig(models.Model):
                         cust.get('id'), e
                     )
             if create_vals_list:
-                Partner.create(create_vals_list)
+                try:
+                    Partner.create(create_vals_list)
+                except (ValidationError, Exception):
+                    _logger.warning(
+                        'Batch create falhou, '
+                        'fallback individual'
+                    )
+                    for single_vals in create_vals_list:
+                        try:
+                            Partner.create(single_vals)
+                        except (ValidationError, Exception) as e:
+                            # VAT invalido — criar sem VAT
+                            _logger.warning(
+                                'VAT invalido %s, '
+                                'criar sem VAT: %s',
+                                single_vals.get('vat'),
+                                e
+                            )
+                            try:
+                                single_vals['vat'] = False
+                                Partner.create(single_vals)
+                            except Exception as e2:
+                                errors += 1
+                                _logger.error(
+                                    'Erro criar cliente '
+                                    '%s: %s',
+                                    single_vals.get(
+                                        'wisedat_id'
+                                    ), e2
+                                )
             self.env.cr.commit()
             new_progress = (
                 (self.sync_progress or 0) + synced
@@ -686,17 +735,25 @@ class WisedatConfig(models.Model):
             ('wisedat_id', '=',
              cust_data.get('id'))
         ], limit=1)
-        if not partner and cust_data.get(
-            'tax_id'
-        ):
+        if not partner and vals.get('vat'):
             partner = Partner.search([
-                ('vat', '=',
-                 cust_data['tax_id'])
+                ('vat', '=', vals['vat'])
             ], limit=1)
-        if partner:
-            partner.write(vals)
-        else:
-            Partner.create(vals)
+        try:
+            if partner:
+                partner.write(vals)
+            else:
+                Partner.create(vals)
+        except (ValidationError, Exception) as e:
+            _logger.warning(
+                'VAT invalido %s, retry sem VAT: %s',
+                vals.get('vat'), e
+            )
+            vals['vat'] = False
+            if partner:
+                partner.write(vals)
+            else:
+                Partner.create(vals)
 
     # ── Produtos (chunked) ───────────────────
 
