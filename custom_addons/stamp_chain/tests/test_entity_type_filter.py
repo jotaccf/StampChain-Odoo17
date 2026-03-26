@@ -178,7 +178,7 @@ class TestEntityTypeFilter(TransactionCase):
         # Should have been created with entity_type
         partner = self.env['res.partner'].search([
             ('wisedat_id', '=', 9003)
-        ])
+        ], limit=1)
         self.assertTrue(partner)
         self.assertEqual(
             partner.wisedat_entity_type, '0003'

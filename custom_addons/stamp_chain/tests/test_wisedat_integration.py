@@ -43,7 +43,8 @@ class TestWisedatIntegration(TransactionCase):
 
     @patch(
         'odoo.addons.stamp_chain.models'
-        '.wisedat_sync.WisedatConfig._api_call'
+        '.wisedat_sync.WisedatConfig'
+        '._api_call_with_retry'
     )
     def test_sync_customers_creates_partner(
         self, mock_api
@@ -61,12 +62,15 @@ class TestWisedatIntegration(TransactionCase):
                     'postal_code': '4000-001',
                 },
             }],
+            'pagination': {
+                'number_pages': 1,
+                'number_items': 1,
+            },
         }
-        synced, errors = self.config._sync_customers()
-        self.assertEqual(synced, 1)
-        self.assertEqual(errors, 0)
+        with self._mock_commit():
+            self.config._sync_customers_batch()
         partner = self.env['res.partner'].search(
-            [('wisedat_id', '=', 8001)]
+            [('wisedat_id', '=', 8001)], limit=1
         )
         self.assertTrue(partner)
         self.assertEqual(
@@ -75,7 +79,8 @@ class TestWisedatIntegration(TransactionCase):
 
     @patch(
         'odoo.addons.stamp_chain.models'
-        '.wisedat_sync.WisedatConfig._api_call'
+        '.wisedat_sync.WisedatConfig'
+        '._api_call_with_retry'
     )
     def test_sync_customers_wisedat_is_master(
         self, mock_api
@@ -90,8 +95,13 @@ class TestWisedatIntegration(TransactionCase):
                 'name': 'Nome Actualizado Wisedat',
                 'tax_id': '509876543',
             }],
+            'pagination': {
+                'number_pages': 1,
+                'number_items': 1,
+            },
         }
-        self.config._sync_customers()
+        with self._mock_commit():
+            self.config._sync_customers_batch()
         partner.invalidate_recordset()
         self.assertEqual(
             partner.name, 'Nome Actualizado Wisedat'
@@ -99,7 +109,8 @@ class TestWisedatIntegration(TransactionCase):
 
     @patch(
         'odoo.addons.stamp_chain.models'
-        '.wisedat_sync.WisedatConfig._api_call'
+        '.wisedat_sync.WisedatConfig'
+        '._api_call_with_retry'
     )
     def test_sync_customers_finds_by_vat(
         self, mock_api
@@ -114,35 +125,49 @@ class TestWisedatIntegration(TransactionCase):
                 'name': 'Por NIF',
                 'tax_id': 'PT500000001',
             }],
+            'pagination': {
+                'number_pages': 1,
+                'number_items': 1,
+            },
         }
-        self.config._sync_customers()
+        with self._mock_commit():
+            self.config._sync_customers_batch()
         partner.invalidate_recordset()
         self.assertEqual(partner.wisedat_id, 8003)
 
     @patch(
         'odoo.addons.stamp_chain.models'
-        '.wisedat_sync.WisedatConfig._api_call'
+        '.wisedat_sync.WisedatConfig'
+        '._api_call_with_retry'
     )
     def test_sync_products_creates_product(
         self, mock_api
     ):
         mock_api.return_value = {
-            'items': [{
-                'code': 'TAB-NEW-001',
-                'name': 'Tabaco Novo',
+            'products': [{
+                'id': 5001,
+                'name': 'TAB-NEW-001',
+                'description': 'Tabaco Novo',
                 'price': 12.50,
+                'active': True,
             }],
+            'pagination': {
+                'number_pages': 1,
+                'number_items': 1,
+            },
         }
-        synced, errors = self.config._sync_products()
-        self.assertEqual(synced, 1)
+        with self._mock_commit():
+            self.config._sync_products_batch()
         product = self.env['product.product'].search(
-            [('default_code', '=', 'TAB-NEW-001')]
+            [('default_code', '=', 'TAB-NEW-001')],
+            limit=1
         )
         self.assertTrue(product)
 
     @patch(
         'odoo.addons.stamp_chain.models'
-        '.wisedat_sync.WisedatConfig._api_call'
+        '.wisedat_sync.WisedatConfig'
+        '._api_call_with_retry'
     )
     def test_sync_products_updates_existing(
         self, mock_api
@@ -153,37 +178,66 @@ class TestWisedatIntegration(TransactionCase):
             'list_price': 5.00,
         })
         mock_api.return_value = {
-            'items': [{
-                'code': 'TAB-EXIST-001',
-                'name': 'Actualizado',
+            'products': [{
+                'id': 5002,
+                'name': 'TAB-EXIST-001',
+                'description': 'Actualizado',
                 'price': 8.75,
+                'active': True,
             }],
+            'pagination': {
+                'number_pages': 1,
+                'number_items': 1,
+            },
         }
-        self.config._sync_products()
+        with self._mock_commit():
+            self.config._sync_products_batch()
         product.invalidate_recordset()
-        self.assertAlmostEqual(product.list_price, 8.75)
+        self.assertAlmostEqual(
+            product.list_price, 8.75
+        )
 
     @patch(
         'odoo.addons.stamp_chain.models'
-        '.wisedat_sync.WisedatConfig._api_call'
+        '.wisedat_sync.WisedatConfig'
+        '._api_call_with_retry'
     )
-    def test_api_error_raises_user_error(
+    def test_api_error_sets_error_status(
         self, mock_api
     ):
-        mock_api.side_effect = UserError('Connection refused')
-        with self.assertRaises(UserError):
-            self.config._sync_customers()
+        mock_api.side_effect = Exception(
+            'Connection refused'
+        )
+        with self._mock_commit():
+            self.config._sync_customers_batch()
+        self.assertEqual(
+            self.config.sync_status, 'error'
+        )
 
+    @patch(
+        'odoo.addons.stamp_chain.models'
+        '.wisedat_sync.WisedatConfig'
+        '._api_call_with_retry'
+    )
     @patch(
         'odoo.addons.stamp_chain.models'
         '.wisedat_sync.WisedatConfig._api_call'
     )
     def test_full_sync_updates_status(
-        self, mock_api
+        self, mock_api, mock_api_retry
     ):
         mock_api.return_value = {
             'customers': [],
             'items': [],
+        }
+        mock_api_retry.return_value = {
+            'customers': [],
+            'categories': [],
+            'products': [],
+            'pagination': {
+                'number_pages': 1,
+                'number_items': 0,
+            },
         }
         with self._mock_commit():
             self.config.action_full_sync()

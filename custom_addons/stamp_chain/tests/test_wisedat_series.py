@@ -212,7 +212,7 @@ class TestWisedatSeries(TransactionCase):
             self.config
             ._validate_order_series()
         )
-        self.assertEqual(result, 40)
+        self.assertEqual(result, '40')
 
     @patch(
         'odoo.addons.stamp_chain.models'

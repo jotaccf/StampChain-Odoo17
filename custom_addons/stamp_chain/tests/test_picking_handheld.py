@@ -37,15 +37,11 @@ class TestPickingHandheld(TransactionCase):
             'location_id': self.location.id,
             'quantity': 100,
         })
-        picking_type = self.env[
-            'stock.picking.type'
-        ].search([
-            ('code', '=', 'internal'),
-        ], limit=1)
         picking = self.env[
             'stock.picking'
         ].create({
-            'picking_type_id': picking_type.id,
+            'picking_type_id':
+                self.wh.int_type_id.id,
             'location_id': self.location.id,
             'location_dest_id': self.env.ref(
                 'stock.stock_location_output'
