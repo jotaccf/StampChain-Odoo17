@@ -35,5 +35,12 @@ class ResPartner(models.Model):
        readonly=True,
        index=True,
        help='Tipo de entidade no Wisedat. '
-            'Obtido via GET /customers/{id}.',
+            'Obtido via GET /customers?id=X.',
+    )
+    wisedat_entity_type_checked = fields.Boolean(
+        string='Tipo Entidade Verificado',
+        default=False,
+        readonly=True,
+        help='True apos verificacao do entity_type '
+             'via API (mesmo que vazio).',
     )

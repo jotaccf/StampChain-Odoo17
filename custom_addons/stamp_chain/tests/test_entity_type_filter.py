@@ -149,85 +149,46 @@ class TestEntityTypeFilter(TransactionCase):
     @patch(
         'odoo.addons.stamp_chain.models'
         '.wisedat_sync.WisedatConfig'
-        '._fetch_customer_entity_type'
-    )
-    @patch(
-        'odoo.addons.stamp_chain.models'
-        '.wisedat_sync.WisedatConfig'
         '._api_call_with_retry'
     )
-    def test_sync_new_customer_checks_entity_type(
-        self, mock_api, mock_fetch_type
+    def test_sync_creates_new_customer_without_type(
+        self, mock_api
     ):
-        """New customer triggers individual GET
-        to check entity_type before creating."""
+        """New customer is created without
+        entity_type check (classification is
+        a separate step)."""
         mock_api.return_value = {
             'customers': [{
                 'id': 9003,
-                'name': 'Novo Grossista',
-                'tax_id': '501234567',
+                'name': 'Novo Cliente',
+                'tax_id': '',
             }],
             'pagination': {
                 'number_pages': 1,
                 'number_items': 1,
             },
         }
-        mock_fetch_type.return_value = '0003'
         with self._mock_commit():
             self.config._sync_customers_batch()
-        # Should have been created with entity_type
         partner = self.env['res.partner'].search([
             ('wisedat_id', '=', 9003)
         ], limit=1)
         self.assertTrue(partner)
-        self.assertEqual(
-            partner.wisedat_entity_type, '0003'
+        # entity_type not set yet (needs classify)
+        self.assertFalse(
+            partner.wisedat_entity_type
         )
 
     @patch(
         'odoo.addons.stamp_chain.models'
         '.wisedat_sync.WisedatConfig'
-        '._fetch_customer_entity_type'
+        '._fetch_entity_types_batch'
     )
-    @patch(
-        'odoo.addons.stamp_chain.models'
-        '.wisedat_sync.WisedatConfig'
-        '._api_call_with_retry'
-    )
-    def test_sync_new_b2c_customer_not_created(
-        self, mock_api, mock_fetch_type
+    def test_classify_parallel(
+        self, mock_batch_fetch
     ):
-        """New customer with entity_type 0001
-        is NOT created when B2C is disabled."""
-        mock_api.return_value = {
-            'customers': [{
-                'id': 9004,
-                'name': 'Cliente Final Novo',
-                'tax_id': '509876543',
-            }],
-            'pagination': {
-                'number_pages': 1,
-                'number_items': 1,
-            },
-        }
-        mock_fetch_type.return_value = '0001'
-        with self._mock_commit():
-            self.config._sync_customers_batch()
-        partner = self.env['res.partner'].search([
-            ('wisedat_id', '=', 9004)
-        ])
-        self.assertFalse(partner)
-
-    @patch(
-        'odoo.addons.stamp_chain.models'
-        '.wisedat_sync.WisedatConfig'
-        '._api_call_with_retry'
-    )
-    def test_classify_entity_types_bulk(
-        self, mock_api
-    ):
-        """action_classify_entity_types fetches
-        entity_type for unclassified partners."""
+        """action_classify_entity_types uses
+        parallel fetch and marks checked."""
         p1 = self.env['res.partner'].create({
             'name': 'Sem Tipo 1',
             'wisedat_id': 9010,
@@ -236,22 +197,15 @@ class TestEntityTypeFilter(TransactionCase):
             'name': 'Sem Tipo 2',
             'wisedat_id': 9011,
         })
-        def side_effect(method, endpoint,
-                        payload=None):
-            if '/customers/9010' in endpoint:
-                return {
-                    'entity_type': '0002',
-                    'id': 9010,
-                    'name': 'Sem Tipo 1',
-                }
-            if '/customers/9011' in endpoint:
-                return {
-                    'entity_type': '0004',
-                    'id': 9011,
-                    'name': 'Sem Tipo 2',
-                }
-            return {}
-        mock_api.side_effect = side_effect
+        p3 = self.env['res.partner'].create({
+            'name': 'Sem Tipo 3',
+            'wisedat_id': 9012,
+        })
+        mock_batch_fetch.return_value = {
+            9010: '0002',
+            9011: '0004',
+            9012: False,  # sem entity_type
+        }
         with self._mock_commit():
             result = (
                 self.config
@@ -262,11 +216,42 @@ class TestEntityTypeFilter(TransactionCase):
         )
         p1.invalidate_recordset()
         p2.invalidate_recordset()
+        p3.invalidate_recordset()
         self.assertEqual(
             p1.wisedat_entity_type, '0002'
         )
+        self.assertTrue(
+            p1.wisedat_entity_type_checked
+        )
         self.assertEqual(
             p2.wisedat_entity_type, '0004'
+        )
+        self.assertTrue(
+            p2.wisedat_entity_type_checked
+        )
+        # p3 has no entity_type but IS checked
+        self.assertFalse(
+            p3.wisedat_entity_type
+        )
+        self.assertTrue(
+            p3.wisedat_entity_type_checked
+        )
+
+    def test_classify_all_checked_skips(self):
+        """Classify returns early when all
+        partners are already checked."""
+        self.env['res.partner'].create({
+            'name': 'Ja Verificado',
+            'wisedat_id': 9020,
+            'wisedat_entity_type_checked': True,
+        })
+        result = (
+            self.config
+            .action_classify_entity_types()
+        )
+        self.assertIn(
+            'classificados',
+            result['params']['message']
         )
 
     def test_entity_type_field_on_partner(self):

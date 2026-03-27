@@ -7,6 +7,9 @@ import time
 import json
 import base64
 from datetime import timedelta
+from concurrent.futures import (
+    ThreadPoolExecutor, as_completed
+)
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_v1_5
 
@@ -543,33 +546,121 @@ class WisedatConfig(models.Model):
             )
             return False
 
+    def _fetch_entity_types_batch(
+        self, customer_ids, max_workers=10
+    ):
+        """Faz GET /customers?id=X em paralelo
+        para uma lista de IDs. Retorna dict
+        {wisedat_id: entity_type_or_False}.
+        Threads nao tocam no ORM."""
+        url_base = self.api_url
+        headers = self._get_headers()
+        session = self._get_session()
+
+        def _fetch_one(cid):
+            try:
+                r = session.get(
+                    f'{url_base}/customers'
+                    f'?id={cid}',
+                    headers=headers,
+                    timeout=10,
+                )
+                if not r.ok:
+                    return (cid, False)
+                data = r.json()
+                cust = (
+                    data.get('customer', data)
+                    if isinstance(data, dict)
+                    else data
+                )
+                if isinstance(cust, dict):
+                    raw = cust.get(
+                        'entity_type',
+                        cust.get('entitytype', '')
+                    )
+                    return (
+                        cid,
+                        str(raw).strip()
+                        if raw else False
+                    )
+                return (cid, False)
+            except Exception:
+                return (cid, False)
+
+        results = {}
+        with ThreadPoolExecutor(
+            max_workers=max_workers
+        ) as executor:
+            futures = {
+                executor.submit(_fetch_one, cid): cid
+                for cid in customer_ids
+            }
+            for future in as_completed(futures):
+                cid, etype = future.result()
+                results[cid] = etype
+        return results
+
     def action_classify_entity_types(self):
         """Botao 'Classificar Entidades' —
-        faz GET individual para cada parceiro
-        sem wisedat_entity_type definido."""
+        faz GET paralelo para cada parceiro
+        nao verificado. Marca todos como
+        checked (mesmo sem entity_type)."""
         self.ensure_one()
         partners = self.env['res.partner'].search([
             ('wisedat_id', '!=', 0),
-            ('wisedat_entity_type', '=', False),
+            ('wisedat_entity_type_checked', '=',
+             False),
         ])
+        if not partners:
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': 'StampChain',
+                    'message': (
+                        'Todos os clientes ja '
+                        'estao classificados.'
+                    ),
+                    'type': 'success',
+                },
+            }
+        # Recolher IDs para fetch paralelo
+        id_map = {
+            p.wisedat_id: p.id for p in partners
+        }
+        _logger.info(
+            'StampChain: classificar %d clientes '
+            '(paralelo, 10 workers)',
+            len(id_map)
+        )
+        results = self._fetch_entity_types_batch(
+            list(id_map.keys())
+        )
+        # Aplicar resultados na thread principal
         classified = 0
-        for partner in partners:
-            entity_type = (
-                self._fetch_customer_entity_type(
-                    partner.wisedat_id
-                )
-            )
-            if entity_type:
-                partner.wisedat_entity_type = (
-                    entity_type
-                )
+        batch_count = 0
+        for wisedat_id, etype in results.items():
+            partner_id = id_map.get(wisedat_id)
+            if not partner_id:
+                continue
+            partner = self.env[
+                'res.partner'
+            ].browse(partner_id)
+            vals = {
+                'wisedat_entity_type_checked': True,
+            }
+            if etype:
+                vals['wisedat_entity_type'] = etype
                 classified += 1
-            if classified % 50 == 0:
+            partner.write(vals)
+            batch_count += 1
+            if batch_count % 100 == 0:
                 self.env.cr.commit()
         self.env.cr.commit()
         _logger.info(
-            'StampChain: %d parceiros classificados',
-            classified
+            'StampChain: %d/%d classificados '
+            '(com tipo)',
+            classified, len(results)
         )
         return {
             'type': 'ir.actions.client',
@@ -577,8 +668,9 @@ class WisedatConfig(models.Model):
             'params': {
                 'title': 'StampChain',
                 'message': (
-                    f'{classified} clientes '
-                    f'classificados com sucesso.'
+                    f'{classified} clientes com tipo '
+                    f'de entidade identificado '
+                    f'({len(results)} verificados).'
                 ),
                 'type': 'success',
             },
@@ -766,31 +858,10 @@ class WisedatConfig(models.Model):
                             vals['vat'] = False
                             partner.write(vals)
                     else:
-                        # Cliente novo: verificar
-                        # entity_type via GET
-                        # individual antes de criar
-                        if filtering_active and cust_id:
-                            etype = (
-                                self
-                                ._fetch_customer_entity_type(
-                                    cust_id
-                                )
-                            )
-                            if etype:
-                                vals[
-                                    'wisedat_entity_type'
-                                ] = etype
-                                if (etype
-                                        not in
-                                        allowed_types):
-                                    skipped += 1
-                                    _logger.debug(
-                                        'Cliente %s '
-                                        'tipo %s '
-                                        'ignorado',
-                                        cust_id, etype
-                                    )
-                                    continue
+                        # Cliente novo: criar sem
+                        # verificar entity_type
+                        # (classificacao via botao
+                        # dedicado com paralelismo)
                         create_vals_list.append(vals)
                     synced += 1
                 except Exception as e:
