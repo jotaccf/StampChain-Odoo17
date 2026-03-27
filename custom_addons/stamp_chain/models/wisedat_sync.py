@@ -1862,6 +1862,8 @@ class WisedatConfig(models.Model):
                     config.env.cr.rollback()
         # Desactivar cron quando nao ha mais
         # trabalho (padrao liga/desliga)
+        # SQL directo: ORM impede modificar
+        # ir.cron durante a sua execucao
         any_syncing = self.search_count([
             ('active', '=', True),
             ('sync_status', '=', 'syncing'),
@@ -1871,7 +1873,12 @@ class WisedatConfig(models.Model):
                 cron = self.env.ref(
                     'stamp_chain.ir_cron_wisedat_sync'
                 )
-                cron.active = False
+                self.env.cr.execute(
+                    'UPDATE ir_cron '
+                    'SET active = false '
+                    'WHERE id = %s',
+                    [cron.id]
+                )
                 self.env.cr.commit()
             except Exception:
                 pass
@@ -1880,7 +1887,13 @@ class WisedatConfig(models.Model):
         cron = self.env.ref(
             'stamp_chain.ir_cron_wisedat_sync'
         )
-        cron.nextcall = (
+        next_time = (
             fields.Datetime.now()
             + timedelta(minutes=minutes)
+        )
+        self.env.cr.execute(
+            'UPDATE ir_cron '
+            'SET nextcall = %s '
+            'WHERE id = %s',
+            [next_time, cron.id]
         )
