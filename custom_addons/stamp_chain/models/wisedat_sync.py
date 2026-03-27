@@ -1632,17 +1632,15 @@ class WisedatConfig(models.Model):
         cron = self.env.ref(
             'stamp_chain.ir_cron_wisedat_sync'
         )
-        cron.write({
-            'active': True,
-            'nextcall': fields.Datetime.now(),
-        })
+        cron.write({'active': True})
+        cron._trigger()
         return {
             'type': 'ir.actions.client',
             'tag': 'display_notification',
             'params': {
                 'title': 'StampChain',
                 'message': (
-                    'Sincronizacao agendada.'
+                    'Sincronizacao iniciada.'
                 ),
                 'type': 'success',
             },
@@ -1759,85 +1757,66 @@ class WisedatConfig(models.Model):
                 },
             }
 
-    # ── Cron faseado (V7 watchdog) ───────────
+    # ── Cron sync (V8 — single-run) ──────────
 
     @api.model
     def _cron_sync(self):
+        """Processa sync completa num unico run.
+        Nao modifica ir_cron de dentro do job
+        (evita deadlock com o cron runner).
+        Se nao ha configs em syncing, retorna
+        imediatamente (no-op)."""
         configs = self.search([
             ('active', '=', True),
             ('sync_status', '=', 'syncing'),
         ])
+        if not configs:
+            return
         for config in configs:
-            # V7: watchdog
-            if (config.sync_phase != 'idle'
-                    and config.sync_phase_started
-                    and (fields.Datetime.now()
-                         - config.sync_phase_started)
-                    > timedelta(minutes=30)):
-                _logger.warning(
-                    'StampChain: fase %s presa. '
-                    'Reset.',
-                    config.sync_phase
-                )
+            try:
+                # Fase 0: Categorias
                 config.write({
-                    'sync_phase': 'idle',
-                    'sync_status': 'error',
+                    'sync_phase': 'categories',
+                    'sync_phase_started':
+                        fields.Datetime.now(),
                 })
                 config.env.cr.commit()
-            try:
-                config.sync_status = 'syncing'
-                config.env.cr.commit()
-                # Fase 0: Categorias
-                if config.sync_phase in (
-                    'idle', 'categories'
-                ):
-                    config.write({
-                        'sync_phase': 'categories',
-                        'sync_phase_started':
-                            fields.Datetime.now(),
-                    })
-                    config.env.cr.commit()
-                    config._sync_categories()
+                config._sync_categories()
+                # Fase 1: Clientes
+                if config.sync_customers:
                     config.write({
                         'sync_phase': 'customers',
                         'sync_phase_started':
                             fields.Datetime.now(),
                     })
                     config.env.cr.commit()
-                # Fase 1: Clientes
-                if (config.sync_phase == 'customers'
-                        and config.sync_customers):
-                    has_more = (
+                    while (
                         config._sync_customers_batch()
-                    )
-                    if has_more:
-                        self._reschedule_cron(2)
-                        return
+                    ):
+                        if config._check_stop_requested():
+                            return
+                # Fase 2: Produtos
+                if config.sync_products:
                     config.write({
                         'sync_phase': 'products',
                         'sync_phase_started':
                             fields.Datetime.now(),
                     })
                     config.env.cr.commit()
-                # Fase 2: Produtos
-                if (config.sync_phase == 'products'
-                        and config.sync_products):
-                    has_more = (
+                    while (
                         config._sync_products_batch()
-                    )
-                    if has_more:
-                        self._reschedule_cron(2)
-                        return
-                    config.write({
-                        'sync_phase': 'stock',
-                        'sync_phase_started':
-                            fields.Datetime.now(),
-                    })
-                    config.env.cr.commit()
+                    ):
+                        if config._check_stop_requested():
+                            return
                 # Fase 3: Stock
-                if config.sync_phase == 'stock':
-                    config._sync_stock_by_warehouse()
-                # Concluido (apos stock)
+                config.write({
+                    'sync_phase': 'stock',
+                    'sync_phase_started':
+                        fields.Datetime.now(),
+                })
+                config.env.cr.commit()
+                config._sync_stock_by_warehouse()
+                # Concluido
                 config.write({
                     'sync_status': 'ok',
                     'sync_phase': 'idle',
@@ -1846,6 +1825,9 @@ class WisedatConfig(models.Model):
                         fields.Datetime.now(),
                 })
                 config.env.cr.commit()
+                _logger.info(
+                    'StampChain: sync completa OK'
+                )
             except Exception as e:
                 config.env.cr.rollback()
                 _logger.error(
@@ -1860,40 +1842,3 @@ class WisedatConfig(models.Model):
                     config.env.cr.commit()
                 except Exception:
                     config.env.cr.rollback()
-        # Desactivar cron quando nao ha mais
-        # trabalho (padrao liga/desliga)
-        # SQL directo: ORM impede modificar
-        # ir.cron durante a sua execucao
-        any_syncing = self.search_count([
-            ('active', '=', True),
-            ('sync_status', '=', 'syncing'),
-        ])
-        if not any_syncing:
-            try:
-                cron = self.env.ref(
-                    'stamp_chain.ir_cron_wisedat_sync'
-                )
-                self.env.cr.execute(
-                    'UPDATE ir_cron '
-                    'SET active = false '
-                    'WHERE id = %s',
-                    [cron.id]
-                )
-                self.env.cr.commit()
-            except Exception:
-                pass
-
-    def _reschedule_cron(self, minutes=2):
-        cron = self.env.ref(
-            'stamp_chain.ir_cron_wisedat_sync'
-        )
-        next_time = (
-            fields.Datetime.now()
-            + timedelta(minutes=minutes)
-        )
-        self.env.cr.execute(
-            'UPDATE ir_cron '
-            'SET nextcall = %s '
-            'WHERE id = %s',
-            [next_time, cron.id]
-        )
