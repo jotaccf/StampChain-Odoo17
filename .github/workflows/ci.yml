@@ -49,7 +49,7 @@ jobs:
             -e USER=odoo \
             -e PASSWORD=odoo \
             odoo:17.0 bash -c "\
-              pip3 install python-barcode odoo-test-helper && \
+              pip3 install python-barcode odoo-test-helper pycryptodome && \
               odoo \
                 --addons-path=/mnt/extra-addons,/mnt/extra-addons/oca,/mnt/oca-barcodes,/usr/lib/python3/dist-packages/odoo/addons \
                 --db_host=127.0.0.1 \
