@@ -52,22 +52,9 @@
                      decoration-warning="sync_status == 'syncing'"/>
             </group>
           </group>
-          <group invisible="not sync_customers">
-            <group string="Tipos de Entidade a Sincronizar">
-              <field name="sync_entity_cliente_final"/>
-              <field name="sync_entity_revendedor"/>
-              <field name="sync_entity_grossista"/>
-              <field name="sync_entity_distribuicao"/>
-              <div colspan="2" style="margin-top: 8px;">
-                <button name="action_classify_entity_types"
-                        string="Classificar Entidades"
-                        type="object"
-                        class="btn-secondary"
-                        icon="fa-tags"
-                        help="Obtem o tipo de entidade de cada cliente via API Wisedat (GET individual). Necessario apos a primeira sync."/>
-              </div>
-            </group>
-          </group>
+          <!-- Filtro tipo entidade removido —
+               base de clientes limitada, sync total -->
+
           <!-- ============================================
                STATE 2 — SYNCING (live progress)
                Visible only when sync_status == 'syncing'

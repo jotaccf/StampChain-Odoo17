@@ -264,3 +264,94 @@ class TestEntityTypeFilter(TransactionCase):
         self.assertEqual(
             partner.wisedat_entity_type, '0003'
         )
+
+    @patch(
+        'odoo.addons.stamp_chain.models'
+        '.wisedat_sync.WisedatConfig'
+        '._api_call_with_retry'
+    )
+    def test_sync_full_customer_fields(
+        self, mock_api
+    ):
+        """Sync maps all Wisedat customer
+        fields to res.partner."""
+        mock_api.return_value = {
+            'customers': [{
+                'id': 9050,
+                'code': 'CLI050',
+                'name': 'Empresa Completa',
+                'tax_id': '999999990',
+                'email': 'geral@completa.pt',
+                'phone': '210000001',
+                'website': 'www.completa.pt',
+                'notes': 'Obs de teste',
+                'country': {
+                    'iso_3166_1': 'PT',
+                    'name': 'Portugal',
+                },
+                'payment_condition': {
+                    'id': 1,
+                    'description': '30 dias',
+                },
+                'payment_method': {
+                    'id': 2,
+                    'description': 'Transferencia',
+                },
+                'currency': {
+                    'id': 1,
+                    'description': 'Euro',
+                    'symbol': 'EUR',
+                },
+                'billing_address': {
+                    'street': 'Rua Teste 100',
+                    'city': 'Lisboa',
+                    'postal_code': '1000-001',
+                    'postal_code_location':
+                        'Lisboa',
+                    'region': 'Lisboa',
+                    'country': {
+                        'iso_3166_1': 'PT',
+                    },
+                },
+            }],
+            'pagination': {
+                'number_pages': 1,
+                'number_items': 1,
+            },
+        }
+        with self._mock_commit():
+            self.config._sync_customers_batch()
+        partner = self.env['res.partner'].search([
+            ('wisedat_id', '=', 9050)
+        ], limit=1)
+        self.assertTrue(partner)
+        self.assertEqual(partner.ref, 'CLI050')
+        self.assertEqual(
+            partner.email, 'geral@completa.pt'
+        )
+        self.assertEqual(
+            partner.phone, '210000001'
+        )
+        self.assertEqual(
+            partner.website, 'www.completa.pt'
+        )
+        self.assertEqual(
+            partner.comment, 'Obs de teste'
+        )
+        self.assertEqual(
+            partner.street, 'Rua Teste 100'
+        )
+        self.assertEqual(
+            partner.zip, '1000-001'
+        )
+        self.assertEqual(
+            partner.wisedat_payment_condition,
+            '30 dias'
+        )
+        self.assertEqual(
+            partner.wisedat_payment_method,
+            'Transferencia'
+        )
+        self.assertEqual(
+            partner.wisedat_currency, 'Euro'
+        )

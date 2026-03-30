@@ -44,3 +44,15 @@ class ResPartner(models.Model):
         help='True apos verificacao do entity_type '
              'via API (mesmo que vazio).',
     )
+    wisedat_payment_condition = fields.Char(
+        string='Condicao Pagamento Wisedat',
+        readonly=True,
+    )
+    wisedat_payment_method = fields.Char(
+        string='Metodo Pagamento Wisedat',
+        readonly=True,
+    )
+    wisedat_currency = fields.Char(
+        string='Moeda Wisedat',
+        readonly=True,
+    )

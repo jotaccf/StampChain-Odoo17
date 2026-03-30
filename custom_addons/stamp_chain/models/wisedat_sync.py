@@ -82,9 +82,10 @@ class WisedatConfig(models.Model):
     )
 
     # — Filtro tipo entidade (sync clientes) —
+    # Todos True por defeito = sem filtragem
     sync_entity_cliente_final = fields.Boolean(
         string='Cliente Final (0001)',
-        default=False,
+        default=True,
         help='Sincronizar clientes do tipo '
              'Cliente Final.',
     )
@@ -683,12 +684,22 @@ class WisedatConfig(models.Model):
             cust_data.get('billing_address', {})
             or {}
         )
+        # Pais — nível raiz ou billing_address
         country_code = 'PT'
-        country_obj = billing.get('country', {})
-        if isinstance(country_obj, dict):
-            country_code = country_obj.get(
-                'iso_3166_1', 'PT'
+        root_country = (
+            cust_data.get('country', {}) or {}
+        )
+        bill_country = (
+            billing.get('country', {}) or {}
+        )
+        if isinstance(root_country, dict):
+            country_code = root_country.get(
+                'iso_3166_1', country_code
             )
+        if isinstance(bill_country, dict):
+            cc = bill_country.get('iso_3166_1')
+            if cc:
+                country_code = cc
         country_id = self.env[
             'res.country'
         ].search([
@@ -703,12 +714,48 @@ class WisedatConfig(models.Model):
                 raw_vat = country_code + raw_vat
         else:
             raw_vat = False
+        # Cidade + localidade postal
+        city = billing.get('city', '')
+        postal_loc = billing.get(
+            'postal_code_location', ''
+        )
+        if postal_loc and postal_loc != city:
+            city = postal_loc
+        # Telefone: principal ou billing fallback
+        phone = (
+            cust_data.get('phone')
+            or billing.get('phone')
+            or ''
+        )
+        # Distrito/regiao → state_id
+        state_id = False
+        region = billing.get('region', '')
+        if region and country_id:
+            state = self.env[
+                'res.country.state'
+            ].search([
+                ('country_id', '=', country_id.id),
+                ('name', 'ilike', region),
+            ], limit=1)
+            if state:
+                state_id = state.id
+        # Pagamento, moeda (campos informativos)
+        pay_cond = cust_data.get(
+            'payment_condition', {}
+        ) or {}
+        pay_meth = cust_data.get(
+            'payment_method', {}
+        ) or {}
+        currency = cust_data.get(
+            'currency', {}
+        ) or {}
 
-        return {
+        vals = {
             'name': cust_data.get('name', ''),
+            'ref': cust_data.get('code') or False,
             'vat': raw_vat,
             'email': cust_data.get('email'),
-            'phone': cust_data.get('phone'),
+            'phone': phone,
             'website': cust_data.get('website'),
             'comment': cust_data.get('notes'),
             'customer_rank': 1,
@@ -717,7 +764,7 @@ class WisedatConfig(models.Model):
             'wisedat_sync_date':
                 fields.Datetime.now(),
             'street': billing.get('street', ''),
-            'city': billing.get('city', ''),
+            'city': city,
             'zip': billing.get(
                 'postal_code', ''
             ),
@@ -725,7 +772,24 @@ class WisedatConfig(models.Model):
                 country_id.id
                 if country_id else False
             ),
+            'state_id': state_id,
+            'wisedat_payment_condition': (
+                pay_cond.get('description', '')
+                if isinstance(pay_cond, dict)
+                else ''
+            ),
+            'wisedat_payment_method': (
+                pay_meth.get('description', '')
+                if isinstance(pay_meth, dict)
+                else ''
+            ),
+            'wisedat_currency': (
+                currency.get('description', '')
+                if isinstance(currency, dict)
+                else ''
+            ),
         }
+        return vals
 
     def _sync_customers_batch(self):
         Partner = self.env['res.partner']
