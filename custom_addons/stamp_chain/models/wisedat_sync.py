@@ -478,6 +478,12 @@ class WisedatConfig(models.Model):
             'name': cat_data.get('name', ''),
             'wisedat_id': cat_data['id'],
         }
+        # Imagem da categoria (replace)
+        image = cat_data.get('image')
+        if image and isinstance(image, str):
+            if ',' in image:
+                image = image.split(',', 1)[1]
+            vals['image_1920'] = image
         if parent:
             vals['parent_id'] = parent
         if existing:
@@ -1073,12 +1079,36 @@ class WisedatConfig(models.Model):
             ], limit=1)
             if cat:
                 categ_id = cat.id
+        # Imposto (informativo)
+        tax = item_data.get('tax', {}) or {}
+        # Unidade (informativo)
+        unit = item_data.get('unit', {}) or {}
+        # Precos adicionais
+        prices = item_data.get('prices', {}) or {}
+        prices_str = ''
+        if isinstance(prices, dict):
+            parts = [
+                f'{k}={v}' for k, v in prices.items()
+                if v and str(v) != '0'
+            ]
+            prices_str = ', '.join(parts)
+        # Descricao de venda
+        desc_sale = (
+            item_data.get('brief_description')
+            or item_data.get(
+                'commercial_description'
+            )
+            or ''
+        )
         vals = {
             'name': item_data.get(
                 'description',
                 item_data.get('name', '')
             ),
             'default_code': item_data.get('name'),
+            'barcode': (
+                item_data.get('barcode') or False
+            ),
             'list_price': item_data.get(
                 'price', 0
             ),
@@ -1089,7 +1119,48 @@ class WisedatConfig(models.Model):
             'wisedat_synced': True,
             'wisedat_sync_date':
                 fields.Datetime.now(),
+            'weight': item_data.get(
+                'net_weight', 0
+            ) or 0,
+            'volume': item_data.get(
+                'volume', 0
+            ) or 0,
+            'wisedat_gross_weight': (
+                item_data.get('gross_weight', 0)
+                or 0
+            ),
+            'wisedat_tax_description': (
+                tax.get('description', '')
+                if isinstance(tax, dict) else ''
+            ),
+            'wisedat_tax_rate': (
+                float(tax.get('value', 0))
+                if isinstance(tax, dict) else 0
+            ),
+            'wisedat_tax_exemption': (
+                tax.get('exemption_reason', '')
+                if isinstance(tax, dict) else ''
+            ),
+            'wisedat_unit': (
+                unit.get('description', '')
+                if isinstance(unit, dict) else ''
+            ),
+            'wisedat_prices': prices_str,
         }
+        # Descricao de venda (detalhe)
+        if desc_sale:
+            vals['description_sale'] = desc_sale
+        # Notas (detalhe)
+        notes = item_data.get('notes')
+        if notes:
+            vals['description_purchase'] = notes
+        # Imagem (replace, nao add)
+        image = item_data.get('image')
+        if image and isinstance(image, str):
+            # Remover prefixo data:image/...;base64,
+            if ',' in image:
+                image = image.split(',', 1)[1]
+            vals['image_1920'] = image
         if categ_id:
             vals['categ_id'] = categ_id
         if item_data.get('parent_id'):
@@ -1097,6 +1168,50 @@ class WisedatConfig(models.Model):
                 item_data['parent_id']
             )
         return vals
+
+    def _fetch_products_detail_batch(
+        self, product_ids, max_workers=10
+    ):
+        """Faz GET /products?id=X em paralelo.
+        Retorna dict {wisedat_id: full_dict}."""
+        url_base = self.api_url
+        headers = self._get_headers()
+        session = self._get_session()
+
+        def _fetch_one(pid):
+            try:
+                r = session.get(
+                    f'{url_base}/products'
+                    f'?id={pid}',
+                    headers=headers,
+                    timeout=10,
+                )
+                if not r.ok:
+                    return (pid, None)
+                data = r.json()
+                prod = (
+                    data.get('product', data)
+                    if isinstance(data, dict)
+                    else data
+                )
+                if isinstance(prod, dict):
+                    return (pid, prod)
+                return (pid, None)
+            except Exception:
+                return (pid, None)
+
+        results = {}
+        with ThreadPoolExecutor(
+            max_workers=max_workers
+        ) as executor:
+            futures = {
+                executor.submit(_fetch_one, pid): pid
+                for pid in product_ids
+            }
+            for future in as_completed(futures):
+                pid, detail = future.result()
+                results[pid] = detail
+        return results
 
     def _sync_products_batch(self):
         Product = self.env['product.product']
@@ -1163,10 +1278,16 @@ class WisedatConfig(models.Model):
                         total_records,
                 })
                 self.env.cr.commit()
+            # Buscar detalhes completos em paralelo
             wisedat_ids = [
                 i.get('id') for i in items
                 if i.get('id')
             ]
+            details = (
+                self._fetch_products_detail_batch(
+                    wisedat_ids
+                )
+            )
             existing = Product.search([
                 ('wisedat_id', 'in', wisedat_ids)
             ])
@@ -1176,13 +1297,28 @@ class WisedatConfig(models.Model):
             create_vals_list = []
             for item in items:
                 try:
+                    item_id = item.get('id')
+                    # Usar detalhe se disponivel
+                    item_data = (
+                        details.get(item_id) or item
+                    )
+                    # Manter campos da listagem que
+                    # o detalhe pode nao ter
+                    if (details.get(item_id)
+                            and item.get('image')
+                            and not details[
+                                item_id
+                            ].get('image')):
+                        item_data['image'] = (
+                            item['image']
+                        )
                     vals = (
                         self._prepare_product_vals(
-                            item
+                            item_data
                         )
                     )
                     product = existing_map.get(
-                        item.get('id')
+                        item_id
                     )
                     if not product:
                         code = item.get('name')

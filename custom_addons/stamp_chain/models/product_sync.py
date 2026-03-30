@@ -37,6 +37,32 @@ class ProductProduct(models.Model):
              'controlado por seriais no Odoo. '
              'Wisedat qty apenas comparativa.',
     )
+    wisedat_gross_weight = fields.Float(
+        string='Peso Bruto Wisedat',
+        readonly=True,
+    )
+    wisedat_tax_description = fields.Char(
+        string='Imposto Wisedat',
+        readonly=True,
+    )
+    wisedat_tax_rate = fields.Float(
+        string='Taxa Imposto Wisedat',
+        readonly=True,
+    )
+    wisedat_tax_exemption = fields.Char(
+        string='Isencao Imposto Wisedat',
+        readonly=True,
+    )
+    wisedat_unit = fields.Char(
+        string='Unidade Wisedat',
+        readonly=True,
+    )
+    wisedat_prices = fields.Char(
+        string='Precos Wisedat',
+        readonly=True,
+        help='Precos adicionais do Wisedat '
+             '(price_2..price_5)',
+    )
 
 
 class ProductCategory(models.Model):

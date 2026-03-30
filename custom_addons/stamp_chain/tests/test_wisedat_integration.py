@@ -162,24 +162,41 @@ class TestWisedatIntegration(TransactionCase):
     @patch(
         'odoo.addons.stamp_chain.models'
         '.wisedat_sync.WisedatConfig'
+        '._fetch_products_detail_batch'
+    )
+    @patch(
+        'odoo.addons.stamp_chain.models'
+        '.wisedat_sync.WisedatConfig'
         '._api_call_with_retry'
     )
     def test_sync_products_creates_product(
-        self, mock_api
+        self, mock_api, mock_detail
     ):
+        prod = {
+            'id': 5001,
+            'name': 'TAB-NEW-001',
+            'description': 'Tabaco Novo',
+            'price': 12.50,
+            'active': True,
+            'barcode': '5601234567890',
+            'tax': {
+                'id': 1,
+                'value': 23,
+                'description': 'IVA 23%',
+            },
+            'unit': {
+                'id': 1,
+                'description': 'Unidade',
+            },
+        }
         mock_api.return_value = {
-            'products': [{
-                'id': 5001,
-                'name': 'TAB-NEW-001',
-                'description': 'Tabaco Novo',
-                'price': 12.50,
-                'active': True,
-            }],
+            'products': [prod],
             'pagination': {
                 'number_pages': 1,
                 'number_items': 1,
             },
         }
+        mock_detail.return_value = {5001: prod}
         with self._mock_commit():
             self.config._sync_products_batch()
         product = self.env['product.product'].search(
@@ -187,33 +204,47 @@ class TestWisedatIntegration(TransactionCase):
             limit=1
         )
         self.assertTrue(product)
+        self.assertEqual(
+            product.barcode, '5601234567890'
+        )
+        self.assertEqual(
+            product.wisedat_tax_description,
+            'IVA 23%'
+        )
 
+    @patch(
+        'odoo.addons.stamp_chain.models'
+        '.wisedat_sync.WisedatConfig'
+        '._fetch_products_detail_batch'
+    )
     @patch(
         'odoo.addons.stamp_chain.models'
         '.wisedat_sync.WisedatConfig'
         '._api_call_with_retry'
     )
     def test_sync_products_updates_existing(
-        self, mock_api
+        self, mock_api, mock_detail
     ):
         product = self.env['product.product'].create({
             'name': 'Existente',
             'default_code': 'TAB-EXIST-001',
             'list_price': 5.00,
         })
+        prod = {
+            'id': 5002,
+            'name': 'TAB-EXIST-001',
+            'description': 'Actualizado',
+            'price': 8.75,
+            'active': True,
+        }
         mock_api.return_value = {
-            'products': [{
-                'id': 5002,
-                'name': 'TAB-EXIST-001',
-                'description': 'Actualizado',
-                'price': 8.75,
-                'active': True,
-            }],
+            'products': [prod],
             'pagination': {
                 'number_pages': 1,
                 'number_items': 1,
             },
         }
+        mock_detail.return_value = {5002: prod}
         with self._mock_commit():
             self.config._sync_products_batch()
         product.invalidate_recordset()
