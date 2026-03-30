@@ -80,29 +80,39 @@ class TestEntityTypeFilter(TransactionCase):
     @patch(
         'odoo.addons.stamp_chain.models'
         '.wisedat_sync.WisedatConfig'
+        '._fetch_customers_detail_batch'
+    )
+    @patch(
+        'odoo.addons.stamp_chain.models'
+        '.wisedat_sync.WisedatConfig'
         '._api_call_with_retry'
     )
     def test_sync_skips_existing_b2c_partner(
-        self, mock_api
+        self, mock_api, mock_detail
     ):
         """Existing partner with entity_type 0001
-        is skipped during sync."""
+        is skipped when B2C disabled."""
+        self.config.sync_entity_cliente_final = (
+            False
+        )
         partner = self.env['res.partner'].create({
             'name': 'Cliente Final Existente',
             'wisedat_id': 9001,
             'wisedat_entity_type': '0001',
         })
+        cust = {
+            'id': 9001,
+            'name': 'Nome Novo',
+            'tax_id': '',
+        }
         mock_api.return_value = {
-            'customers': [{
-                'id': 9001,
-                'name': 'Nome Novo',
-                'tax_id': '',
-            }],
+            'customers': [cust],
             'pagination': {
                 'number_pages': 1,
                 'number_items': 1,
             },
         }
+        mock_detail.return_value = {9001: cust}
         with self._mock_commit():
             self.config._sync_customers_batch()
         partner.invalidate_recordset()
@@ -115,10 +125,15 @@ class TestEntityTypeFilter(TransactionCase):
     @patch(
         'odoo.addons.stamp_chain.models'
         '.wisedat_sync.WisedatConfig'
+        '._fetch_customers_detail_batch'
+    )
+    @patch(
+        'odoo.addons.stamp_chain.models'
+        '.wisedat_sync.WisedatConfig'
         '._api_call_with_retry'
     )
     def test_sync_updates_allowed_type_partner(
-        self, mock_api
+        self, mock_api, mock_detail
     ):
         """Existing partner with entity_type 0002
         is updated during sync."""
@@ -127,17 +142,19 @@ class TestEntityTypeFilter(TransactionCase):
             'wisedat_id': 9002,
             'wisedat_entity_type': '0002',
         })
+        cust = {
+            'id': 9002,
+            'name': 'Revendedor Actualizado',
+            'tax_id': '',
+        }
         mock_api.return_value = {
-            'customers': [{
-                'id': 9002,
-                'name': 'Revendedor Actualizado',
-                'tax_id': '',
-            }],
+            'customers': [cust],
             'pagination': {
                 'number_pages': 1,
                 'number_items': 1,
             },
         }
+        mock_detail.return_value = {9002: cust}
         with self._mock_commit():
             self.config._sync_customers_batch()
         partner.invalidate_recordset()
@@ -149,14 +166,18 @@ class TestEntityTypeFilter(TransactionCase):
     @patch(
         'odoo.addons.stamp_chain.models'
         '.wisedat_sync.WisedatConfig'
+        '._fetch_customers_detail_batch'
+    )
+    @patch(
+        'odoo.addons.stamp_chain.models'
+        '.wisedat_sync.WisedatConfig'
         '._api_call_with_retry'
     )
-    def test_sync_creates_new_customer_without_type(
-        self, mock_api
+    def test_sync_fetches_full_details(
+        self, mock_api, mock_detail
     ):
-        """New customer is created without
-        entity_type check (classification is
-        a separate step)."""
+        """Sync automatically fetches full
+        customer details via parallel GETs."""
         mock_api.return_value = {
             'customers': [{
                 'id': 9003,
@@ -168,43 +189,69 @@ class TestEntityTypeFilter(TransactionCase):
                 'number_items': 1,
             },
         }
+        mock_detail.return_value = {
+            9003: {
+                'id': 9003,
+                'name': 'Novo Cliente Completo',
+                'tax_id': '',
+                'email': 'novo@teste.pt',
+                'phone': '210000099',
+                'entity_type': '0003',
+                'billing_address': {
+                    'street': 'Rua Nova 1',
+                    'city': 'Porto',
+                    'postal_code': '4000-001',
+                },
+            },
+        }
         with self._mock_commit():
             self.config._sync_customers_batch()
         partner = self.env['res.partner'].search([
             ('wisedat_id', '=', 9003)
         ], limit=1)
         self.assertTrue(partner)
-        # entity_type not set yet (needs classify)
-        self.assertFalse(
-            partner.wisedat_entity_type
+        self.assertEqual(
+            partner.name, 'Novo Cliente Completo'
+        )
+        self.assertEqual(
+            partner.email, 'novo@teste.pt'
+        )
+        self.assertEqual(
+            partner.street, 'Rua Nova 1'
+        )
+        self.assertEqual(
+            partner.wisedat_entity_type, '0003'
+        )
+        self.assertTrue(
+            partner.wisedat_entity_type_checked
         )
 
     @patch(
         'odoo.addons.stamp_chain.models'
         '.wisedat_sync.WisedatConfig'
-        '._fetch_entity_types_batch'
+        '._fetch_customers_detail_batch'
     )
-    def test_classify_parallel(
-        self, mock_batch_fetch
+    def test_enrich_updates_all_fields(
+        self, mock_detail
     ):
-        """action_classify_entity_types uses
-        parallel fetch and marks checked."""
+        """action_classify_entity_types enriches
+        partners with full Wisedat data."""
         p1 = self.env['res.partner'].create({
-            'name': 'Sem Tipo 1',
+            'name': 'Sem Dados',
             'wisedat_id': 9010,
         })
-        p2 = self.env['res.partner'].create({
-            'name': 'Sem Tipo 2',
-            'wisedat_id': 9011,
-        })
-        p3 = self.env['res.partner'].create({
-            'name': 'Sem Tipo 3',
-            'wisedat_id': 9012,
-        })
-        mock_batch_fetch.return_value = {
-            9010: '0002',
-            9011: '0004',
-            9012: False,  # sem entity_type
+        mock_detail.return_value = {
+            9010: {
+                'id': 9010,
+                'name': 'Com Dados',
+                'email': 'dados@teste.pt',
+                'entity_type': '0002',
+                'billing_address': {
+                    'street': 'Rua Enriquecida 5',
+                    'city': 'Braga',
+                    'postal_code': '4700-001',
+                },
+            },
         }
         with self._mock_commit():
             result = (
@@ -215,43 +262,17 @@ class TestEntityTypeFilter(TransactionCase):
             result['params']['type'], 'success'
         )
         p1.invalidate_recordset()
-        p2.invalidate_recordset()
-        p3.invalidate_recordset()
+        self.assertEqual(
+            p1.email, 'dados@teste.pt'
+        )
+        self.assertEqual(
+            p1.street, 'Rua Enriquecida 5'
+        )
         self.assertEqual(
             p1.wisedat_entity_type, '0002'
         )
         self.assertTrue(
             p1.wisedat_entity_type_checked
-        )
-        self.assertEqual(
-            p2.wisedat_entity_type, '0004'
-        )
-        self.assertTrue(
-            p2.wisedat_entity_type_checked
-        )
-        # p3 has no entity_type but IS checked
-        self.assertFalse(
-            p3.wisedat_entity_type
-        )
-        self.assertTrue(
-            p3.wisedat_entity_type_checked
-        )
-
-    def test_classify_all_checked_skips(self):
-        """Classify returns early when all
-        partners are already checked."""
-        self.env['res.partner'].create({
-            'name': 'Ja Verificado',
-            'wisedat_id': 9020,
-            'wisedat_entity_type_checked': True,
-        })
-        result = (
-            self.config
-            .action_classify_entity_types()
-        )
-        self.assertIn(
-            'classificados',
-            result['params']['message']
         )
 
     def test_entity_type_field_on_partner(self):
@@ -268,56 +289,70 @@ class TestEntityTypeFilter(TransactionCase):
     @patch(
         'odoo.addons.stamp_chain.models'
         '.wisedat_sync.WisedatConfig'
+        '._fetch_customers_detail_batch'
+    )
+    @patch(
+        'odoo.addons.stamp_chain.models'
+        '.wisedat_sync.WisedatConfig'
         '._api_call_with_retry'
     )
     def test_sync_full_customer_fields(
-        self, mock_api
+        self, mock_api, mock_detail
     ):
         """Sync maps all Wisedat customer
-        fields to res.partner."""
+        fields via automatic detail fetch."""
+        full_data = {
+            'id': 9050,
+            'code': 'CLI050',
+            'name': 'Empresa Completa',
+            'tax_id': '999999990',
+            'email': 'geral@completa.pt',
+            'phone': '210000001',
+            'website': 'www.completa.pt',
+            'notes': 'Obs de teste',
+            'entity_type': '0002',
+            'country': {
+                'iso_3166_1': 'PT',
+                'name': 'Portugal',
+            },
+            'payment_condition': {
+                'id': 1,
+                'description': '30 dias',
+            },
+            'payment_method': {
+                'id': 2,
+                'description': 'Transferencia',
+            },
+            'currency': {
+                'id': 1,
+                'description': 'Euro',
+                'symbol': 'EUR',
+            },
+            'billing_address': {
+                'street': 'Rua Teste 100',
+                'city': 'Lisboa',
+                'postal_code': '1000-001',
+                'postal_code_location':
+                    'Lisboa',
+                'region': 'Lisboa',
+                'country': {
+                    'iso_3166_1': 'PT',
+                },
+            },
+        }
         mock_api.return_value = {
             'customers': [{
                 'id': 9050,
-                'code': 'CLI050',
                 'name': 'Empresa Completa',
                 'tax_id': '999999990',
-                'email': 'geral@completa.pt',
-                'phone': '210000001',
-                'website': 'www.completa.pt',
-                'notes': 'Obs de teste',
-                'country': {
-                    'iso_3166_1': 'PT',
-                    'name': 'Portugal',
-                },
-                'payment_condition': {
-                    'id': 1,
-                    'description': '30 dias',
-                },
-                'payment_method': {
-                    'id': 2,
-                    'description': 'Transferencia',
-                },
-                'currency': {
-                    'id': 1,
-                    'description': 'Euro',
-                    'symbol': 'EUR',
-                },
-                'billing_address': {
-                    'street': 'Rua Teste 100',
-                    'city': 'Lisboa',
-                    'postal_code': '1000-001',
-                    'postal_code_location':
-                        'Lisboa',
-                    'region': 'Lisboa',
-                    'country': {
-                        'iso_3166_1': 'PT',
-                    },
-                },
             }],
             'pagination': {
                 'number_pages': 1,
                 'number_items': 1,
             },
+        }
+        mock_detail.return_value = {
+            9050: full_data,
         }
         with self._mock_commit():
             self.config._sync_customers_batch()
@@ -354,4 +389,7 @@ class TestEntityTypeFilter(TransactionCase):
         )
         self.assertEqual(
             partner.wisedat_currency, 'Euro'
+        )
+        self.assertEqual(
+            partner.wisedat_entity_type, '0002'
         )

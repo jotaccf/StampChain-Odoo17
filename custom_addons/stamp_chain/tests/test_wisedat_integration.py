@@ -44,29 +44,36 @@ class TestWisedatIntegration(TransactionCase):
     @patch(
         'odoo.addons.stamp_chain.models'
         '.wisedat_sync.WisedatConfig'
+        '._fetch_customers_detail_batch'
+    )
+    @patch(
+        'odoo.addons.stamp_chain.models'
+        '.wisedat_sync.WisedatConfig'
         '._api_call_with_retry'
     )
     def test_sync_customers_creates_partner(
-        self, mock_api
+        self, mock_api, mock_detail
     ):
+        cust = {
+            'id': 8001,
+            'name': 'Distribuidora Norte SA',
+            'tax_id': '501234567',
+            'email': 'norte@dist.pt',
+            'phone': '220000001',
+            'billing_address': {
+                'street': 'Rua do Norte 1',
+                'city': 'Porto',
+                'postal_code': '4000-001',
+            },
+        }
         mock_api.return_value = {
-            'customers': [{
-                'id': 8001,
-                'name': 'Distribuidora Norte SA',
-                'tax_id': '501234567',
-                'email': 'norte@dist.pt',
-                'phone': '220000001',
-                'billing_address': {
-                    'street': 'Rua do Norte 1',
-                    'city': 'Porto',
-                    'postal_code': '4000-001',
-                },
-            }],
+            'customers': [cust],
             'pagination': {
                 'number_pages': 1,
                 'number_items': 1,
             },
         }
+        mock_detail.return_value = {8001: cust}
         with self._mock_commit():
             self.config._sync_customers_batch()
         partner = self.env['res.partner'].search(
@@ -76,30 +83,40 @@ class TestWisedatIntegration(TransactionCase):
         self.assertEqual(
             partner.name, 'Distribuidora Norte SA'
         )
+        self.assertEqual(
+            partner.email, 'norte@dist.pt'
+        )
 
+    @patch(
+        'odoo.addons.stamp_chain.models'
+        '.wisedat_sync.WisedatConfig'
+        '._fetch_customers_detail_batch'
+    )
     @patch(
         'odoo.addons.stamp_chain.models'
         '.wisedat_sync.WisedatConfig'
         '._api_call_with_retry'
     )
     def test_sync_customers_wisedat_is_master(
-        self, mock_api
+        self, mock_api, mock_detail
     ):
         partner = self.env['res.partner'].create({
             'name': 'Nome Antigo',
             'wisedat_id': 8002,
         })
+        cust = {
+            'id': 8002,
+            'name': 'Nome Actualizado Wisedat',
+            'tax_id': '509876543',
+        }
         mock_api.return_value = {
-            'customers': [{
-                'id': 8002,
-                'name': 'Nome Actualizado Wisedat',
-                'tax_id': '509876543',
-            }],
+            'customers': [cust],
             'pagination': {
                 'number_pages': 1,
                 'number_items': 1,
             },
         }
+        mock_detail.return_value = {8002: cust}
         with self._mock_commit():
             self.config._sync_customers_batch()
         partner.invalidate_recordset()
@@ -110,26 +127,33 @@ class TestWisedatIntegration(TransactionCase):
     @patch(
         'odoo.addons.stamp_chain.models'
         '.wisedat_sync.WisedatConfig'
+        '._fetch_customers_detail_batch'
+    )
+    @patch(
+        'odoo.addons.stamp_chain.models'
+        '.wisedat_sync.WisedatConfig'
         '._api_call_with_retry'
     )
     def test_sync_customers_finds_by_vat(
-        self, mock_api
+        self, mock_api, mock_detail
     ):
         partner = self.env['res.partner'].create({
             'name': 'Por NIF',
             'vat': 'PT999999990',
         })
+        cust = {
+            'id': 8003,
+            'name': 'Por NIF',
+            'tax_id': 'PT999999990',
+        }
         mock_api.return_value = {
-            'customers': [{
-                'id': 8003,
-                'name': 'Por NIF',
-                'tax_id': 'PT999999990',
-            }],
+            'customers': [cust],
             'pagination': {
                 'number_pages': 1,
                 'number_items': 1,
             },
         }
+        mock_detail.return_value = {8003: cust}
         with self._mock_commit():
             self.config._sync_customers_batch()
         partner.invalidate_recordset()
@@ -217,6 +241,11 @@ class TestWisedatIntegration(TransactionCase):
     @patch(
         'odoo.addons.stamp_chain.models'
         '.wisedat_sync.WisedatConfig'
+        '._fetch_customers_detail_batch'
+    )
+    @patch(
+        'odoo.addons.stamp_chain.models'
+        '.wisedat_sync.WisedatConfig'
         '._api_call_with_retry'
     )
     @patch(
@@ -224,7 +253,8 @@ class TestWisedatIntegration(TransactionCase):
         '.wisedat_sync.WisedatConfig._api_call'
     )
     def test_full_sync_updates_status(
-        self, mock_api, mock_api_retry
+        self, mock_api, mock_api_retry,
+        mock_detail
     ):
         mock_api.return_value = {
             'customers': [],
@@ -239,6 +269,7 @@ class TestWisedatIntegration(TransactionCase):
                 'number_items': 0,
             },
         }
+        mock_detail.return_value = {}
         with self._mock_commit():
             self.config.action_full_sync()
         self.assertIn(

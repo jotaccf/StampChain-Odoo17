@@ -547,12 +547,12 @@ class WisedatConfig(models.Model):
             )
             return False
 
-    def _fetch_entity_types_batch(
+    def _fetch_customers_detail_batch(
         self, customer_ids, max_workers=10
     ):
         """Faz GET /customers?id=X em paralelo
         para uma lista de IDs. Retorna dict
-        {wisedat_id: entity_type_or_False}.
+        {wisedat_id: full_customer_dict_or_None}.
         Threads nao tocam no ORM."""
         url_base = self.api_url
         headers = self._get_headers()
@@ -567,7 +567,7 @@ class WisedatConfig(models.Model):
                     timeout=10,
                 )
                 if not r.ok:
-                    return (cid, False)
+                    return (cid, None)
                 data = r.json()
                 cust = (
                     data.get('customer', data)
@@ -575,18 +575,10 @@ class WisedatConfig(models.Model):
                     else data
                 )
                 if isinstance(cust, dict):
-                    raw = cust.get(
-                        'entity_type',
-                        cust.get('entitytype', '')
-                    )
-                    return (
-                        cid,
-                        str(raw).strip()
-                        if raw else False
-                    )
-                return (cid, False)
+                    return (cid, cust)
+                return (cid, None)
             except Exception:
-                return (cid, False)
+                return (cid, None)
 
         results = {}
         with ThreadPoolExecutor(
@@ -597,15 +589,15 @@ class WisedatConfig(models.Model):
                 for cid in customer_ids
             }
             for future in as_completed(futures):
-                cid, etype = future.result()
-                results[cid] = etype
+                cid, detail = future.result()
+                results[cid] = detail
         return results
 
     def action_classify_entity_types(self):
-        """Botao 'Classificar Entidades' —
+        """Botao re-enriquecimento manual —
         faz GET paralelo para cada parceiro
-        nao verificado. Marca todos como
-        checked (mesmo sem entity_type)."""
+        sem dados completos. Actualiza todos
+        os campos do detalhe Wisedat."""
         self.ensure_one()
         partners = self.env['res.partner'].search([
             ('wisedat_id', '!=', 0),
@@ -620,48 +612,60 @@ class WisedatConfig(models.Model):
                     'title': 'StampChain',
                     'message': (
                         'Todos os clientes ja '
-                        'estao classificados.'
+                        'estao enriquecidos.'
                     ),
                     'type': 'success',
                 },
             }
-        # Recolher IDs para fetch paralelo
         id_map = {
             p.wisedat_id: p.id for p in partners
         }
         _logger.info(
-            'StampChain: classificar %d clientes '
+            'StampChain: enriquecer %d clientes '
             '(paralelo, 10 workers)',
             len(id_map)
         )
-        results = self._fetch_entity_types_batch(
-            list(id_map.keys())
+        results = (
+            self._fetch_customers_detail_batch(
+                list(id_map.keys())
+            )
         )
-        # Aplicar resultados na thread principal
-        classified = 0
+        enriched = 0
         batch_count = 0
-        for wisedat_id, etype in results.items():
+        for wisedat_id, detail in results.items():
             partner_id = id_map.get(wisedat_id)
-            if not partner_id:
+            if not partner_id or not detail:
                 continue
             partner = self.env[
                 'res.partner'
             ].browse(partner_id)
-            vals = {
-                'wisedat_entity_type_checked': True,
-            }
-            if etype:
-                vals['wisedat_entity_type'] = etype
-                classified += 1
-            partner.write(vals)
+            vals = self._prepare_customer_vals(
+                detail
+            )
+            raw_et = detail.get(
+                'entity_type',
+                detail.get('entitytype', '')
+            )
+            if raw_et:
+                vals['wisedat_entity_type'] = (
+                    str(raw_et).strip()
+                )
+            vals['wisedat_entity_type_checked'] = (
+                True
+            )
+            try:
+                partner.write(vals)
+            except (ValidationError, Exception):
+                vals['vat'] = False
+                partner.write(vals)
+            enriched += 1
             batch_count += 1
             if batch_count % 100 == 0:
                 self.env.cr.commit()
         self.env.cr.commit()
         _logger.info(
-            'StampChain: %d/%d classificados '
-            '(com tipo)',
-            classified, len(results)
+            'StampChain: %d clientes enriquecidos',
+            enriched
         )
         return {
             'type': 'ir.actions.client',
@@ -669,9 +673,8 @@ class WisedatConfig(models.Model):
             'params': {
                 'title': 'StampChain',
                 'message': (
-                    f'{classified} clientes com tipo '
-                    f'de entidade identificado '
-                    f'({len(results)} verificados).'
+                    f'{enriched} clientes '
+                    f'enriquecidos com sucesso.'
                 ),
                 'type': 'success',
             },
@@ -854,16 +857,17 @@ class WisedatConfig(models.Model):
                     'sync_total_records': total_records,
                 })
                 self.env.cr.commit()
-            # Tipos de entidade permitidos
-            allowed_types = (
-                self._get_allowed_entity_types()
-            )
-            filtering_active = bool(allowed_types)
-            # Bulk search
+            # Buscar detalhes completos em paralelo
             wisedat_ids = [
                 c.get('id') for c in customers
                 if c.get('id')
             ]
+            details = (
+                self._fetch_customers_detail_batch(
+                    wisedat_ids
+                )
+            )
+            # Bulk search parceiros existentes
             existing = Partner.search([
                 ('wisedat_id', 'in', wisedat_ids)
             ])
@@ -871,28 +875,40 @@ class WisedatConfig(models.Model):
                 p.wisedat_id: p for p in existing
             }
             create_vals_list = []
-            skipped = 0
             for cust in customers:
                 try:
                     cust_id = cust.get('id')
-                    partner = existing_map.get(
-                        cust_id
+                    # Usar detalhe completo se
+                    # disponivel, senao dados basicos
+                    cust_data = (
+                        details.get(cust_id) or cust
                     )
-                    # Filtro entidade: parceiro
-                    # existente com tipo conhecido
-                    if (filtering_active
-                            and partner
-                            and partner
-                            .wisedat_entity_type
-                            and partner
-                            .wisedat_entity_type
-                            not in allowed_types):
-                        skipped += 1
-                        continue
                     vals = (
                         self._prepare_customer_vals(
-                            cust
+                            cust_data
                         )
+                    )
+                    # Entity type do detalhe
+                    if isinstance(
+                        details.get(cust_id), dict
+                    ):
+                        raw_et = details[
+                            cust_id
+                        ].get(
+                            'entity_type',
+                            details[cust_id].get(
+                                'entitytype', ''
+                            )
+                        )
+                        if raw_et:
+                            vals[
+                                'wisedat_entity_type'
+                            ] = str(raw_et).strip()
+                        vals[
+                            'wisedat_entity_type_checked'
+                        ] = True
+                    partner = existing_map.get(
+                        cust_id
                     )
                     if (not partner
                             and vals.get('vat')):
@@ -901,16 +917,6 @@ class WisedatConfig(models.Model):
                              vals['vat'])
                         ], limit=1)
                     if partner:
-                        # Parceiro existente com tipo
-                        # conhecido e fora do filtro
-                        if (filtering_active
-                                and partner
-                                .wisedat_entity_type
-                                and partner
-                                .wisedat_entity_type
-                                not in allowed_types):
-                            skipped += 1
-                            continue
                         try:
                             partner.write(vals)
                         except (ValidationError, Exception) as e:
@@ -922,10 +928,6 @@ class WisedatConfig(models.Model):
                             vals['vat'] = False
                             partner.write(vals)
                     else:
-                        # Cliente novo: criar sem
-                        # verificar entity_type
-                        # (classificacao via botao
-                        # dedicado com paralelismo)
                         create_vals_list.append(vals)
                     synced += 1
                 except Exception as e:
@@ -934,12 +936,6 @@ class WisedatConfig(models.Model):
                         'Erro cliente %s: %s',
                         cust.get('id'), e
                     )
-            if skipped:
-                _logger.info(
-                    'StampChain: %d clientes '
-                    'ignorados (tipo entidade)',
-                    skipped
-                )
             if create_vals_list:
                 try:
                     Partner.create(create_vals_list)
