@@ -292,7 +292,7 @@ class WisedatConfig(models.Model):
             session = requests.Session()
             adapter = requests.adapters.HTTPAdapter(
                 pool_connections=1,
-                pool_maxsize=1,
+                pool_maxsize=12,
                 max_retries=0,
             )
             session.mount('http://', adapter)
