@@ -74,11 +74,11 @@ Full operational module — wizards, dashboard, recovery, security stock.
 
 Fiscal warehouse management, eDIC/e-DA, Wisedat integration.
 
-- [x] Wisedat bidirectional sync (customers, products, stock — mock tested)
+- [x] Wisedat sync (customers, products, stock — mock tested)
 - [x] Multi-warehouse: EF (fiscal) + A1 (main)
 - [x] eDIC/e-DA XML generation with email dispatch
 - [x] AT code insertion with EF→A1 transfer unlock
-- [x] Wisedat Transport Guide via API (try/except, non-blocking)
+- [x] Wisedat ECL order creation (POST /orders, try/except, non-blocking)
 - [x] EF direct shipment blocked
 - [x] deploy.sh production script
 - [x] GitHub Actions CI/CD pipeline
@@ -122,8 +122,46 @@ OCR production wizards, complete UI redesign, Wisedat RSA.
 - [x] StampChain design system (sc-* CSS, all views)
 - [x] Wisedat RSA 2-step authentication (JWT cached)
 - [x] Self-contained repo (OCA modules + Dockerfile)
-- [x] 103 unit tests passing
-- [ ] Wisedat real API validation (awaiting production credentials)
+- [x] Unit tests passing
+
+---
+
+### v17.0.2.5.0 — Wisedat Real API
+
+**Released:** March 2026 | **Status:** Released
+
+Real Wisedat API integration — ECL orders, series, chunked sync.
+
+- [x] POST /orders (ECL) replaces /movementofgoods (transport guides removed)
+- [x] Invoice sync removed entirely (zero consumers — team decision)
+- [x] Document series management (GET /series, generic — no document_type)
+- [x] Series validation on order creation
+- [x] VAT prefix auto-fix (Wisedat sends NIF without country prefix)
+- [x] Batch create fallback for invalid VAT (individual with vat=False)
+- [x] Stop sync button (graceful interruption via flag)
+- [x] post_load hook for assets cache cleanup on -u
+- [x] Connection pooling (requests.Session, class-level)
+- [x] API retry with exponential backoff (3 attempts)
+
+---
+
+### v17.0.2.6.0 — Full Customer Sync
+
+**Released:** March 2026 | **Status:** Released
+
+Complete customer field mapping, cron deadlock fix, parallel fetch.
+
+- [x] Automatic full detail fetch during sync (parallel 10 workers per page)
+- [x] Complete field mapping: ref, state_id, city, payment_condition, payment_method, currency
+- [x] Entity type classification (wisedat_entity_type on res.partner)
+- [x] Cron single-run architecture V8 (eliminates deadlock)
+- [x] cron._trigger() for immediate execution (PostgreSQL NOTIFY)
+- [x] Never modify ir_cron from within cron job (deadlock prevention)
+- [x] _fetch_customers_detail_batch with ThreadPoolExecutor (10 workers)
+- [x] Single request without retry for individual customer detail (4xx/5xx = skip)
+- [x] Reset sync status button (manual recovery from stuck state)
+- [x] Robust post_load hook (try/except, isinstance checks)
+- [x] 16 test files, all passing
 
 ---
 

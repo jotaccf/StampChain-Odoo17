@@ -8,12 +8,18 @@
 - Real-time IEC stamp account per geographic zone (Mainland, Madeira, Azores)
 - Individual serial number traceability per stamp
 - Strict FIFO enforcement by INCM lot
-- Bidirectional Wisedat invoicing integration
-- Android handheld guided picking via browser
+- Wisedat ERP integration — automatic customer/product sync with parallel detail fetch
+- ECL order creation on shipment validation (POST /orders)
+- Complete customer field mapping (billing address, payment terms, entity type, currency)
+- Document series management from Wisedat API
+- Android handheld guided picking via browser (OWL 3-step scan)
 - QR code generation for warehouse locations and products
 - Stamp recovery workflow with dual validation and quarantine
+- Discrepancy audit system with physical count and found stamps
+- OCR reception wizard for INCM serial extrapolation
+- Production start/end wizards with consumption calculation
 - Configurable security stock per zone (manager only, with audit history)
-- XML export architecture for AT/DGAIEC (v2.0 roadmap)
+- XML export architecture for AT/DGAIEC (v3.0 roadmap)
 
 ## Requirements
 
@@ -60,14 +66,15 @@ docker exec odoo odoo \
 
 ```
 stamp_chain/
-├── models/          # Data models
+├── models/          # Data models (13 models + 6 extensions)
 ├── views/           # XML views & menus
-├── wizard/          # Transient models
-├── security/        # Groups & ACL
-├── data/            # Initial data (3 IEC zones)
-├── report/          # PDF reports
-├── static/          # OWL 2.0 dashboard
-└── tests/           # Unit tests
+├── wizard/          # Transient models (8 wizards)
+├── security/        # Groups (4 profiles) & ACL
+├── data/            # IEC zones, sequences, cron
+├── report/          # PDF reports (QWeb)
+├── static/          # OWL 2.0 dashboard + picking + OCR
+├── migrations/      # Database migrations
+└── tests/           # Unit tests (16 files)
 ```
 
 ## IEC Zones
