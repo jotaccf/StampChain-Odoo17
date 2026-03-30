@@ -40,9 +40,10 @@ def post_load():
         )
 
 
-def post_init_hook(cr, registry):
-    """Corre na primeira instalacao (-i)."""
-    cr.execute(
+def post_init_hook(env):
+    """Corre na primeira instalacao (-i).
+    Odoo 17 passa env (nao cr, registry)."""
+    env.cr.execute(
         "DELETE FROM ir_attachment "
         "WHERE url LIKE '/web/assets/%%'"
     )
