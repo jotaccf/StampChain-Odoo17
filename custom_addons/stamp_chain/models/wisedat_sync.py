@@ -74,11 +74,17 @@ class WisedatConfig(models.Model):
              'expedicao (POST /orders)',
     )
     sync_frequency = fields.Selection([
-        ('realtime', 'Tempo Real'),
-        ('hourly', 'Horaria'),
+        ('15min', 'A cada 15 minutos'),
+        ('30min', 'A cada 30 minutos'),
+        ('1h', 'A cada hora'),
+        ('4h', 'A cada 4 horas'),
         ('daily', 'Diaria'),
+        ('manual', 'Apenas manual'),
     ], string='Frequencia',
-       default='realtime',
+       default='30min',
+       help='Intervalo entre sincronizacoes '
+            'automaticas. "Apenas manual" '
+            'desactiva a sync periodica.',
     )
 
     # — Filtro tipo entidade (sync clientes) —
@@ -1093,13 +1099,9 @@ class WisedatConfig(models.Model):
             ]
             prices_str = ', '.join(parts)
         # Descricao de venda
-        desc_sale = (
-            item_data.get('brief_description')
-            or item_data.get(
-                'commercial_description'
-            )
-            or ''
-        )
+        # brief_description ignorado — nao editavel
+        # no Wisedat, dados incorrectos
+        desc_sale = ''
         vals = {
             'name': item_data.get(
                 'description',
@@ -1825,10 +1827,11 @@ class WisedatConfig(models.Model):
             'product_sync_total_records': 0,
             'product_sync_percent': 0,
         })
+        # Trigger imediato — o cron apanha
+        # configs com sync_status='syncing'
         cron = self.env.ref(
             'stamp_chain.ir_cron_wisedat_sync'
         )
-        cron.write({'active': True})
         cron._trigger()
         return {
             'type': 'ir.actions.client',
@@ -1953,19 +1956,70 @@ class WisedatConfig(models.Model):
                 },
             }
 
-    # ── Cron sync (V8 — single-run) ──────────
+    # ── Cron sync (V9 — single-run + periodic) ─
+
+    FREQUENCY_INTERVALS = {
+        '15min': timedelta(minutes=15),
+        '30min': timedelta(minutes=30),
+        '1h': timedelta(hours=1),
+        '4h': timedelta(hours=4),
+        'daily': timedelta(days=1),
+    }
 
     @api.model
     def _cron_sync(self):
-        """Processa sync completa num unico run.
-        Nao modifica ir_cron de dentro do job
-        (evita deadlock com o cron runner).
-        Se nao ha configs em syncing, retorna
-        imediatamente (no-op)."""
+        """Processa sync num unico run.
+        Nao modifica ir_cron de dentro do job.
+
+        Duas fontes de trabalho:
+        1. Configs com sync_status='syncing'
+           (lancadas pelo botao manual)
+        2. Configs com sync periodica pendente
+           (last_sync_date + intervalo < now)"""
+        # 1. Configs lancadas manualmente
         configs = self.search([
             ('active', '=', True),
             ('sync_status', '=', 'syncing'),
         ])
+        # 2. Configs com sync periodica pendente
+        periodic = self.search([
+            ('active', '=', True),
+            ('sync_status', 'in', ('ok', 'error')),
+            ('sync_frequency', '!=', False),
+            ('sync_frequency', '!=', 'manual'),
+        ])
+        now = fields.Datetime.now()
+        for config in periodic:
+            interval = self.FREQUENCY_INTERVALS.get(
+                config.sync_frequency,
+                timedelta(hours=1)
+            )
+            if (not config.last_sync_date
+                    or (now - config.last_sync_date)
+                    >= interval):
+                config.write({
+                    'sync_status': 'syncing',
+                    'sync_phase': 'categories',
+                    'sync_stop_requested': False,
+                    'sync_last_page': 0,
+                    'sync_progress': 0,
+                    'sync_errors': 0,
+                    'sync_total_records': 0,
+                    'sync_percent': 0,
+                    'product_sync_last_page': 0,
+                    'product_sync_progress': 0,
+                    'product_sync_errors': 0,
+                    'product_sync_total_records': 0,
+                    'product_sync_percent': 0,
+                })
+                config.env.cr.commit()
+                configs |= config
+                _logger.info(
+                    'StampChain: sync periodica '
+                    '(%s) para %s',
+                    config.sync_frequency,
+                    config.name
+                )
         if not configs:
             return
         for config in configs:

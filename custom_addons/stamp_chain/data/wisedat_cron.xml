@@ -12,10 +12,10 @@
       <field name="code">
         model._cron_sync()
       </field>
-      <field name="interval_number">1</field>
-      <field name="interval_type">hours</field>
+      <field name="interval_number">15</field>
+      <field name="interval_type">minutes</field>
       <field name="numbercall">-1</field>
-      <field name="active">False</field>
+      <field name="active">True</field>
     </record>
   </data>
 </odoo>
