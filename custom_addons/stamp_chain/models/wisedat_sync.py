@@ -1976,6 +1976,22 @@ class WisedatConfig(models.Model):
            (lancadas pelo botao manual)
         2. Configs com sync periodica pendente
            (last_sync_date + intervalo < now)"""
+        all_configs = self.search([
+            ('active', '=', True),
+        ])
+        _logger.info(
+            'StampChain cron: %d configs activas. '
+            'Estados: %s',
+            len(all_configs),
+            ', '.join(
+                '%s(%s/%s)' % (
+                    c.name,
+                    c.sync_status,
+                    c.sync_frequency or 'sem-freq',
+                )
+                for c in all_configs
+            ) if all_configs else 'nenhuma'
+        )
         # 1. Configs lancadas manualmente
         configs = self.search([
             ('active', '=', True),
@@ -1989,6 +2005,11 @@ class WisedatConfig(models.Model):
             ('sync_frequency', '!=', 'manual'),
         ])
         now = fields.Datetime.now()
+        if not periodic:
+            _logger.info(
+                'StampChain cron: sem configs '
+                'periodicas elegiveis.'
+            )
         for config in periodic:
             interval = self.FREQUENCY_INTERVALS.get(
                 config.sync_frequency,
@@ -2019,6 +2040,17 @@ class WisedatConfig(models.Model):
                     '(%s) para %s',
                     config.sync_frequency,
                     config.name
+                )
+            else:
+                remaining = (
+                    interval
+                    - (now - config.last_sync_date)
+                )
+                _logger.info(
+                    'StampChain cron: %s — '
+                    'proxima sync em %s',
+                    config.name,
+                    remaining
                 )
         if not configs:
             return
