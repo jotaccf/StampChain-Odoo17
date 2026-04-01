@@ -31,8 +31,32 @@ def post_load():
                 "DELETE FROM ir_attachment "
                 "WHERE url LIKE '/web/assets/%%'"
             )
+            # Fix cron: corrigir nextcall, intervalo
+            # e noupdate flag na BD
+            cr.execute(
+                "UPDATE ir_cron SET "
+                "  nextcall = NOW() + interval "
+                "  '15 minutes', "
+                "  interval_number = 15, "
+                "  interval_type = 'minutes' "
+                "WHERE id = ("
+                "  SELECT res_id "
+                "  FROM ir_model_data "
+                "  WHERE module = 'stamp_chain' "
+                "  AND name = "
+                "  'ir_cron_wisedat_sync'"
+                ")"
+            )
+            cr.execute(
+                "UPDATE ir_model_data "
+                "SET noupdate = false "
+                "WHERE module = 'stamp_chain' "
+                "AND name = "
+                "'ir_cron_wisedat_sync'"
+            )
         _logger.info(
-            'StampChain: assets cache limpa.'
+            'StampChain: assets cache limpa, '
+            'cron sync corrigido.'
         )
     except Exception as e:
         _logger.warning(
