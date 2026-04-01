@@ -2000,7 +2000,8 @@ class WisedatConfig(models.Model):
         # 2. Configs com sync periodica pendente
         periodic = self.search([
             ('active', '=', True),
-            ('sync_status', 'in', ('ok', 'error')),
+            ('sync_status', 'in',
+             ('ok', 'error', 'idle')),
             ('sync_frequency', '!=', False),
             ('sync_frequency', '!=', 'manual'),
         ])
