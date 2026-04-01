@@ -74,3 +74,8 @@ class ProductCategory(models.Model):
         index=True,
         copy=False,
     )
+    image_1920 = fields.Image(
+        string='Imagem',
+        max_width=1920,
+        max_height=1920,
+    )

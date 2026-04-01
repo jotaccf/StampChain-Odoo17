@@ -186,6 +186,25 @@ Complete product sync, automatic periodic re-sync, ECL order retry.
 
 ---
 
+### v17.0.2.7.1 — Sync Bugfixes
+
+**Released:** April 2026 | **Status:** Released
+
+Cron periodic sync fixes, product field corrections, category image.
+
+- [x] Fix cron nextcall stuck at 2099 (post_load SQL to force correct values)
+- [x] Fix noupdate flag in ir_model_data (allows XML updates on -u)
+- [x] Fix sync_status='idle' excluded from periodic eligibility
+- [x] Fix sync_products=False on pre-existing configs (post_load default)
+- [x] Fix modified_since filtering products out (removed — full sync is fast)
+- [x] Fix weight string "0" truthy bug (float conversion before or-chain)
+- [x] Map description_sale from commercial_description (with description fallback)
+- [x] Map weight from gross_weight when net_weight is 0
+- [x] Category image_1920 field added to product.category
+- [x] Remove diagnostic logging from _cron_sync (cleanup)
+
+---
+
 ### v17.0.3.0.0 — XML Fiscal
 
 **Target:** Q3 2026 | **Status:** Planned

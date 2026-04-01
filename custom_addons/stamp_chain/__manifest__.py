@@ -1,6 +1,6 @@
 {
     'name': 'StampChain',
-    'version': '17.0.2.7.0',
+    'version': '17.0.2.7.1',
     'category': 'Manufacturing',
     'summary': 'Gestao de Armazem, Producao e '
                'Estampilhas IEC para Tabaco',
