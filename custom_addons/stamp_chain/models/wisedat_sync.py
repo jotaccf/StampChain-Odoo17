@@ -1120,11 +1120,11 @@ class WisedatConfig(models.Model):
             'wisedat_synced': True,
             'wisedat_sync_date':
                 fields.Datetime.now(),
-            'weight': (
-                item_data.get('net_weight', 0)
-                or item_data.get('gross_weight', 0)
+            'weight': float(
+                item_data.get('net_weight')
+                or item_data.get('gross_weight')
                 or 0
-            ),
+            ) / 1000,
             'volume': item_data.get(
                 'volume', 0
             ) or 0,
