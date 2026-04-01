@@ -2079,6 +2079,14 @@ class WisedatConfig(models.Model):
                         if config._check_stop_requested():
                             return
                 # Fase 2: Produtos
+                config.invalidate_recordset(
+                    ['sync_products'])
+                _logger.info(
+                    'StampChain cron: sync_products'
+                    '=%s para %s',
+                    config.sync_products,
+                    config.name
+                )
                 if config.sync_products:
                     config.write({
                         'sync_phase': 'products',
