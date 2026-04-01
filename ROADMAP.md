@@ -165,6 +165,27 @@ Complete customer field mapping, cron deadlock fix, parallel fetch.
 
 ---
 
+### v17.0.2.7.0 — Products, Periodic Sync & ECL Retry
+
+**Released:** April 2026 | **Status:** Released
+
+Complete product sync, automatic periodic re-sync, ECL order retry.
+
+- [x] Complete product field mapping with parallel detail fetch (10 workers)
+- [x] Product fields: barcode, image (replace), tax/unit/prices (info), weight, volume
+- [x] Category image sync (replace on update)
+- [x] brief_description removed (not editable in Wisedat, incorrect data)
+- [x] Automatic periodic sync (configurable: 15min/30min/1h/4h/daily/manual)
+- [x] Cron V9: runs every 15min, checks sync_frequency vs last_sync_date
+- [x] ECL order retry: wisedat_order_status (pending/sent/failed) on stock.picking
+- [x] Red alert banner + "Reenviar Wisedat" button when order push fails
+- [x] Chatter notification with error details on failed push
+- [x] Picking list filter "Wisedat Pendente" for failed orders
+- [x] CI fix: pycryptodome + post_init_hook(env) Odoo 17 signature
+- [x] Connection pool sized to match ThreadPoolExecutor (pool_maxsize=12)
+
+---
+
 ### v17.0.3.0.0 — XML Fiscal
 
 **Target:** Q3 2026 | **Status:** Planned
