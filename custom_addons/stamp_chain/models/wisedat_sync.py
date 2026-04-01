@@ -821,11 +821,6 @@ class WisedatConfig(models.Model):
                 f'{self.API_PAGE_SIZE}'
                 f'&page={page}'
             )
-            if self.last_sync_date:
-                endpoint += (
-                    f'&modified_since='
-                    f'{self.last_sync_date.isoformat()}'
-                )
             try:
                 response = (
                     self._api_call_with_retry(
@@ -1230,11 +1225,6 @@ class WisedatConfig(models.Model):
                 f'{self.API_PAGE_SIZE}'
                 f'&page={page}'
             )
-            if self.last_sync_date:
-                endpoint += (
-                    f'&modified_since='
-                    f'{self.last_sync_date.isoformat()}'
-                )
             try:
                 response = (
                     self._api_call_with_retry(
