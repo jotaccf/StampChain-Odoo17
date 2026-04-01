@@ -54,6 +54,17 @@ def post_load():
                 "AND name = "
                 "'ir_cron_wisedat_sync'"
             )
+            # Fix defaults para configs existentes
+            cr.execute(
+                "UPDATE tobacco_wisedat_config "
+                "SET sync_products = true "
+                "WHERE sync_products IS NOT TRUE"
+            )
+            cr.execute(
+                "UPDATE tobacco_wisedat_config "
+                "SET sync_customers = true "
+                "WHERE sync_customers IS NOT TRUE"
+            )
         _logger.info(
             'StampChain: assets cache limpa, '
             'cron sync corrigido.'
