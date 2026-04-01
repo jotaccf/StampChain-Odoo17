@@ -1096,7 +1096,11 @@ class WisedatConfig(models.Model):
         # Descricao de venda
         # brief_description ignorado — nao editavel
         # no Wisedat, dados incorrectos
-        desc_sale = ''
+        desc_sale = (
+            item_data.get('commercial_description')
+            or item_data.get('description')
+            or ''
+        )
         vals = {
             'name': item_data.get(
                 'description',
@@ -1116,9 +1120,11 @@ class WisedatConfig(models.Model):
             'wisedat_synced': True,
             'wisedat_sync_date':
                 fields.Datetime.now(),
-            'weight': item_data.get(
-                'net_weight', 0
-            ) or 0,
+            'weight': (
+                item_data.get('net_weight', 0)
+                or item_data.get('gross_weight', 0)
+                or 0
+            ),
             'volume': item_data.get(
                 'volume', 0
             ) or 0,
