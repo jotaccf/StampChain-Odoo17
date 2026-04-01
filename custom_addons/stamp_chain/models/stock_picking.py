@@ -27,6 +27,23 @@ class StockPicking(models.Model):
         string='ID Documento Wisedat',
         readonly=True,
     )
+    wisedat_order_status = fields.Selection([
+        ('pending', 'Pendente'),
+        ('sent', 'Enviado'),
+        ('failed', 'Falhou'),
+    ], string='Estado Encomenda Wisedat',
+       readonly=True,
+       copy=False,
+    )
+    wisedat_retry_count = fields.Integer(
+        string='Tentativas Wisedat',
+        default=0,
+        readonly=True,
+    )
+    wisedat_error_message = fields.Text(
+        string='Erro Wisedat',
+        readonly=True,
+    )
     is_ef_to_a1_transfer = fields.Boolean(
         string='Transferencia EF -> A1',
         compute='_compute_is_ef_transfer',
@@ -268,16 +285,84 @@ class StockPicking(models.Model):
                     'tobacco.wisedat.config'
                 ].search([], limit=1)
                 if config and config.sync_orders:
-                    try:
-                        config._create_wisedat_order(
-                            picking.id
-                        )
-                    except Exception as e:
-                        _logger.warning(
-                            'Encomenda Wisedat falhou '
-                            '(nao bloqueia): %s', e
-                        )
+                    picking._send_wisedat_order(config)
         return res
+
+    def _send_wisedat_order(self, config):
+        """Envia encomenda ECL ao Wisedat.
+        Nao bloqueia o picking em caso de erro.
+        Regista estado e erro para retry."""
+        self.ensure_one()
+        self.wisedat_order_status = 'pending'
+        try:
+            config._create_wisedat_order(self.id)
+            self.write({
+                'wisedat_order_status': 'sent',
+                'wisedat_error_message': False,
+            })
+        except Exception as e:
+            error_msg = str(e)
+            _logger.warning(
+                'Encomenda Wisedat falhou '
+                '(nao bloqueia): %s', e
+            )
+            self.write({
+                'wisedat_order_status': 'failed',
+                'wisedat_retry_count': (
+                    self.wisedat_retry_count + 1
+                ),
+                'wisedat_error_message': error_msg,
+            })
+            self.message_post(
+                body=(
+                    '<b>Erro Wisedat</b><br/>'
+                    'A encomenda nao foi enviada '
+                    'para o Wisedat.<br/>'
+                    f'<i>{error_msg}</i><br/>'
+                    'Use o botao "Reenviar Wisedat" '
+                    'para tentar novamente.'
+                ),
+                message_type='notification',
+                subtype_xmlid='mail.mt_note',
+            )
+
+    def action_retry_wisedat_order(self):
+        """Botao retry — reenvia encomenda ECL
+        ao Wisedat."""
+        self.ensure_one()
+        config = self.env[
+            'tobacco.wisedat.config'
+        ].search([], limit=1)
+        if not config:
+            raise UserError(
+                'Configuracao Wisedat nao encontrada.'
+            )
+        self._send_wisedat_order(config)
+        if self.wisedat_order_status == 'sent':
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': 'StampChain',
+                    'message': (
+                        'Encomenda reenviada com '
+                        'sucesso!'
+                    ),
+                    'type': 'success',
+                },
+            }
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': 'StampChain',
+                'message': (
+                    'Reenvio falhou. Verifique '
+                    'a ligacao ao Wisedat.'
+                ),
+                'type': 'danger',
+            },
+        }
 
     def _process_stamp_usage(self):
         self.ensure_one()
